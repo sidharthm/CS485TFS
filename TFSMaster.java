@@ -1,13 +1,59 @@
-import java.util.ArrayList;
+import java.net.*;
 import java.io.*;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Queue;
+import java.util.Scanner;
 
 public class TFSMaster {
 	
 	TFSNode root;
 	TFSClient client;
 	File logfile;
+	
+	
+	private String myName;//This contains the server's IP
+	private int portNumber = 4444;//This details the port to be used for trafficking of information
+	private TFSMessage outgoingMessage; //This message is used to convey information to other entities in the system
+	private Queue<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	private TFSMessage heartbeatMessage;//This message is used to ensure chunk servers are still operational
+	private Socket serverSocket; //this socket is used to communicate with the client
+	
 
+	public TFSMaster(){
+		root = new TFSNode(false,null,-1,"root");
+		File file = new File("local/");
+		file.mkdirs();
+		logfile = new File("log.txt");
+		try {
+			if (!logfile.isFile())
+				logfile.createNewFile();
+			else
+				readLogFile();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		/*TEMPORARY: Master reads its own data from the config file so it has its own IP*/
+		try {
+			Scanner inFile = new Scanner(new File("config.txt"));
+			while (inFile.hasNext()){
+				String input = inFile.next();
+				if (input.equals("MASTER"))
+					myName = inFile.next();
+			}
+		} catch (FileNotFoundException e){
+			System.err.println("Error: Configuration file not found");
+			System.exit(1);
+		}
+		
+		/*Set up all messages with the appropriate initialization*/
+		outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
+		heartbeatMessage = new TFSMessage(myNAme,TFSMessage.Type.MASTER);
+		incomingMessages = new Queue<TFSMessage>();
+	}
+	
 	public TFSMaster(TFSClient c) {
 		root = new TFSNode(false,null,-1,"root");
 		client = c;
@@ -592,4 +638,50 @@ public class TFSMaster {
 			e.printStackTrace();
 		}
 	}
+	/*These methods describe what will eventually be integrated into the threaded master in order to achieve networked functionality
+	* We also should change all the methods from public to private etc. 
+	*/
+	/*
+	public static void main (String[]args){
+		TFSMaster master = new TFSMaster();
+		master.start(); //initiates the thread of the master
+	}
+	public void start(){
+		//call startThread on the master's thread
+	}
+	private void run(){
+		incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
+		if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
+			parseMessage(incomingMessages.remove()); // identify what needs to be done based on the parameters of the first message, and respond
+		}
+	}
+	private void parseMessage(TFSMessage m){
+		//check the parameters of m, figure out the corresponding method to call for that
+		//those methods should finish by sending out the message and resetting the outgoingMessage 
+	}
+	private TFSMessage resetMessage(TFSMessage m){
+		//change all parameters besides messageSource and sourceType to null types 
+		return m;
+	}
+	private Queue<TFSMessage> listenForTraffic(Queue<TFSMessage> q){
+		try (
+			serverSocket =
+                new ServerSocket(portNumber);
+            Socket clientSocket = serverSocket.accept();     
+            ObjectOutputStream out =
+                new ObjectOutputStream(clientSocket.getOutputStream()); //Sends the String back to client to print, can change this to ObjectOutput to send messages
+            ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
+        ) {
+			TFSMessage incomingMessage = new TFSMessage(); //create a new MessageObject, I think we should have the constructor set everything to null when it's initialized
+			incomingMessage.receiveMessage(in); //call readObject 
+			if (incomingMessage.hasData()){ //if we received data
+				q.add(incomingMessage)
+			}
+        } catch (IOException e) {
+            System.out.println("Exception caught when trying to listen on port "
+                + portNumber + " or listening for a connection");
+            System.out.println(e.getMessage());
+        }
+	}
+	*/
 }

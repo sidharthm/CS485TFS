@@ -32,6 +32,8 @@ public class TFSClient{
 	
 	public void setUpClient(){
 		/*This first block gets the master's IP address and loads it into the client*/
+		System.out.println("Welcome to TFS Client");
+		System.out.println("Loading configuration files");
 		try {
 			Scanner inFile = new Scanner(new File("config.txt"));
 			while (inFile.hasNext()){
@@ -39,9 +41,8 @@ public class TFSClient{
 				if (input.equals("MASTER"))
 					hostName = inFile.next();
 			}
-			System.out.println(hostName);
 		} catch (FileNotFoundException e){
-			System.err.println("Configuration file not found");
+			System.err.println("Error: Configuration file not found");
 			System.exit(1);
 		}
 		
@@ -49,6 +50,7 @@ public class TFSClient{
 		* The next block sets up the Socket for the first time, allowing the client to communicate
 		* with the Master. 
 		*/
+		System.out.println("Connecting to TFS Master Server");
 		try (
             Socket messageSocket = new Socket(hostName, portNumber);
             ObjectOutputStream out =
@@ -58,16 +60,16 @@ public class TFSClient{
 			myName = myName.substring(1); //Get rid of the first slash
 			System.out.println(myName); //Print-out to confirm contents
         } catch (UnknownHostException e) {
-            System.err.println("Don't know about host " + hostName);
+            System.err.println("Error: Don't know about host " + hostName);
             System.exit(1);
         } catch (IOException e) {
-            System.err.println("Couldn't get I/O for the connection to " + hostName);
+            System.err.println("Error: Couldn't get I/O for the connection to " + hostName);
             System.exit(1);
         } 
 		
 		//Here, we initialize the TFSMessage object that the Client will send out with the appropriate information about the client machine
 		outgoingMessage = new TFSMessage(myName,TFSMessage.Type.CLIENT);
-		
+		System.out.println("Initialization of Client complete");
 	}
 	
 	public void setMaster(TFSMaster m) {

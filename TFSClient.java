@@ -1,7 +1,9 @@
 import java.io.*;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Scanner;
 
 public class TFSClient{
 	TFSMaster master;
@@ -17,7 +19,55 @@ public class TFSClient{
 	boolean Error = false;
 	String backslash = "\\";
 	
+	String hostName; //Load this from a file, it stores the master server's IP
+	String myName; //This stores the server's own IP so that it can attach that information to messages
+	int portNumber = 4444; //Change this if you want to communicate on a different port
+	Socket clientMessageSocket; //This is the socket the client uses to contact the master
+	
+	TFSMessage outgoingMessage;
+	
 	public TFSClient(){
+		setUpClient();
+	}
+	
+	public void setUpClient(){
+		/*This first block gets the master's IP address and loads it into the client*/
+		try {
+			Scanner inFile = new Scanner(new File("config.txt"));
+			while (inFile.hasNext()){
+				String input = inFile.next();
+				if (input.equals("MASTER"))
+					hostName = inFile.next();
+			}
+			System.out.println(hostName);
+		} catch (FileNotFoundException e){
+			System.err.println("Configuration file not found");
+			System.exit(1);
+		}
+		
+		/*
+		* The next block sets up the Socket for the first time, allowing the client to communicate
+		* with the Master. 
+		*/
+		try (
+            Socket messageSocket = new Socket(hostName, portNumber);
+            ObjectOutputStream out =
+                new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
+        ) {
+			myName = messageSocket.getLocalAddress().toString(); //Convert client's IP address to a string
+			myName = myName.substring(1); //Get rid of the first slash
+			System.out.println(myName); //Print-out to confirm contents
+        } catch (UnknownHostException e) {
+            System.err.println("Don't know about host " + hostName);
+            System.exit(1);
+        } catch (IOException e) {
+            System.err.println("Couldn't get I/O for the connection to " + hostName);
+            System.exit(1);
+        } 
+		
+		//Here, we initialize the TFSMessage object that the Client will send out with the appropriate information about the client machine
+		outgoingMessage = new TFSMessage(myName,TFSMessage.Type.CLIENT);
+		
 	}
 	
 	public void setMaster(TFSMaster m) {
@@ -259,7 +309,7 @@ public class TFSClient{
 			path[i] = d[i];
 		}
 		System.out.println("Client: Sending createDirectory request to Master.");
-		master.createDirectory(path, d[d.length-1],true);
+		//master.createDirectory(path, d[d.length-1],true);
 	}
 	
 	private void makeDirectory(String[] d) {
@@ -383,5 +433,9 @@ public class TFSClient{
 		Error = true;
 		//if (master != null)
 			//console();
+	}
+	public static void main (String[]args){
+		TFSClient thisClient = new TFSClient();
+		thisClient.console();
 	}
 }

@@ -669,7 +669,7 @@ public class TFSMaster {
                 new ServerSocket(portNumber);
             Socket clientSocket = serverSocket.accept();     
             ObjectOutputStream out =
-                new ObjectOutputStream(clientSocket.getOutputStream()); //Sends the String back to client to print, can change this to ObjectOutput to send messages
+                new ObjectOutputStream(clientSocket.getOutputStream()); //To send messages, probably not necessary here
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
         ) {
 			TFSMessage incomingMessage = new TFSMessage(); //create a new MessageObject, I think we should have the constructor set everything to null when it's initialized
@@ -677,11 +677,33 @@ public class TFSMaster {
 			if (incomingMessage.hasData()){ //if we received data
 				q.add(incomingMessage)
 			}
+			//Might make more sense to have an outgoingMessages Queue, and to send the Outgoing message with the proper flag set right after you read
+			TFSMessage current = outgoingMessages.remove();
+			if (current.hasInfo())
+				current.sendMessage(out)
+			else 
+				outgoingMessages.add(current)
         } catch (IOException e) {
             System.out.println("Exception caught when trying to listen on port "
                 + portNumber + " or listening for a connection");
             System.out.println(e.getMessage());
         }
+	}
+	/*If we want to send separately of listening, we'll need a new port*/
+	private void sendTraffic(TFSMessage current){
+		try (
+            Socket messageSocket = new Socket(current.getName(), portNumber);
+            ObjectOutputStream out =
+                new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
+        ) {
+			current.sendMessage(out);
+        } catch (UnknownHostException e) {
+            System.err.println("Error: Don't know about host " + hostName);
+            System.exit(1);
+        } catch (IOException e) {
+            System.err.println("Error: Couldn't get I/O for the connection to " + hostName);
+            System.exit(1);
+        } 
 	}
 	*/
 }

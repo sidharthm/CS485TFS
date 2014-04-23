@@ -25,6 +25,7 @@ public class TFSClient{
 	Socket clientMessageSocket; //This is the socket the client uses to contact the master
 	
 	TFSMessage outgoingMessage;
+	TFSMessage incomingMessage;
 	
 	public TFSClient(){
 		setUpClient();
@@ -50,7 +51,7 @@ public class TFSClient{
 		* The next block sets up the Socket for the first time, allowing the client to communicate
 		* with the Master. 
 		*/
-		System.out.println("Connecting to TFS Master Server");
+		System.out.print("Connecting to TFS Master Server from ");
 		try (
             Socket messageSocket = new Socket(hostName, portNumber);
             ObjectOutputStream out =
@@ -59,6 +60,7 @@ public class TFSClient{
 			myName = messageSocket.getLocalAddress().toString(); //Convert client's IP address to a string
 			myName = myName.substring(1); //Get rid of the first slash
 			System.out.println(myName); //Print-out to confirm contents
+			messageSocket.close();//Done, so let's close this
         } catch (UnknownHostException e) {
             System.err.println("Error: Don't know about host " + hostName);
             System.exit(1);
@@ -436,6 +438,26 @@ public class TFSClient{
 		//if (master != null)
 			//console();
 	}
+	private void listenForResponse(){
+	/*Throw this method in before calling console again*/
+			try (
+			serverSocket =
+                new ServerSocket(portNumber);
+            ObjectOutputStream out =
+                new ObjectOutputStream(clientSocket.getOutputStream()); //To send messages, probably not necessary here
+            ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
+        ) {
+			while(!incomingMessage.hasInfo()){
+				incomingMessage.receiveMessage(in); //call readObject 
+			}
+			serverSocket.close();
+        } catch (IOException e) {
+            System.out.println("Exception caught when trying to listen on port "
+                + portNumber + " or listening for a connection");
+            System.out.println(e.getMessage());
+        }
+	}
+	
 	public static void main (String[]args){
 		TFSClient thisClient = new TFSClient();
 		thisClient.console();

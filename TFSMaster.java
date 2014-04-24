@@ -52,6 +52,8 @@ public class TFSMaster {
 		outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		incomingMessages = new ArrayList<TFSMessage>();
+
+		System.out.println("My ip is " + myName);
 	}
 	
 	public TFSMaster(TFSClient c) {
@@ -641,18 +643,23 @@ public class TFSMaster {
 	/*These methods describe what will eventually be integrated into the threaded master in order to achieve networked functionality
 	* We also should change all the methods from public to private etc. 
 	*/
-	/*
+	
 	public static void main (String[]args){
 		TFSMaster master = new TFSMaster();
 		master.start(); //initiates the thread of the master
+		master.run(); //for testing
 	}
 	public void start(){
 		//call startThread on the master's thread
 	}
 	private void run(){
+		try {
 		incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
 		if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
-			parseMessage(incomingMessages.remove()); // identify what needs to be done based on the parameters of the first message, and respond
+			parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+		}
+		} catch (ClassNotFoundException e){
+			System.out.println("error");
 		}
 	}
 	private void parseMessage(TFSMessage m){
@@ -663,9 +670,9 @@ public class TFSMaster {
 		//change all parameters besides messageSource and sourceType to null types 
 		return m;
 	}
-	private Queue<TFSMessage> listenForTraffic(Queue<TFSMessage> q){
+	private ArrayList<TFSMessage> listenForTraffic(ArrayList<TFSMessage> q) throws ClassNotFoundException{
 		try (
-			serverSocket =
+			ServerSocket serverSocket =
                 new ServerSocket(portNumber);
             Socket clientSocket = serverSocket.accept();     
             ObjectOutputStream out =
@@ -674,22 +681,27 @@ public class TFSMaster {
         ) {
 			TFSMessage incomingMessage = new TFSMessage(); //create a new MessageObject, I think we should have the constructor set everything to null when it's initialized
 			incomingMessage.receiveMessage(in); //call readObject 
-			if (incomingMessage.hasData()){ //if we received data
-				q.add(incomingMessage)
+			if (incomingMessage.getMessageType() != TFSMessage.mType.NONE){ //if we received data
+				q.add(incomingMessage);
 			}
+			/*
 			//Might make more sense to have an outgoingMessages Queue, and to send the Outgoing message with the proper flag set right after you read
-			TFSMessage current = outgoingMessages.remove();
+			TFSMessage current = outgoingMessages.remove(0);
 			if (current.getMessageType() != TFSMessage.mType.NONE)
-				current.sendMessage(out)
+				current.sendMessage(out);
 			else 
-				outgoingMessages.add(current)
+				outgoingMessages.add(current);
+			*/
         } catch (IOException e) {
             System.out.println("Exception caught when trying to listen on port "
                 + portNumber + " or listening for a connection");
             System.out.println(e.getMessage());
-        }
+        } catch (ClassNotFoundException e){
+		System.out.println("error");
 	}
-	*/
+	return q;
+	}
+	
 	/*If we want to send separately of listening, we'll need a new port
 	private void sendTraffic(TFSMessage current){
 		try (

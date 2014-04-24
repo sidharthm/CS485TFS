@@ -15,7 +15,7 @@ public class TFSMaster {
 	private String myName;//This contains the server's IP
 	private int portNumber = 4444;//This details the port to be used for trafficking of information
 	private TFSMessage outgoingMessage; //This message is used to convey information to other entities in the system
-	private Queue<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	private ArrayList<TFSMessage> incomingMessages; // This Queue will store any incoming messages
 	private TFSMessage heartbeatMessage;//This message is used to ensure chunk servers are still operational
 	private Socket serverSocket; //this socket is used to communicate with the client
 	
@@ -50,8 +50,8 @@ public class TFSMaster {
 		
 		/*Set up all messages with the appropriate initialization*/
 		outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
-		heartbeatMessage = new TFSMessage(myNAme,TFSMessage.Type.MASTER);
-		incomingMessages = new Queue<TFSMessage>();
+		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
+		incomingMessages = new ArrayList<TFSMessage>();
 	}
 	
 	public TFSMaster(TFSClient c) {
@@ -679,7 +679,7 @@ public class TFSMaster {
 			}
 			//Might make more sense to have an outgoingMessages Queue, and to send the Outgoing message with the proper flag set right after you read
 			TFSMessage current = outgoingMessages.remove();
-			if (current.hasInfo())
+			if (current.getMessageType() != TFSMessage.mType.NONE)
 				current.sendMessage(out)
 			else 
 				outgoingMessages.add(current)
@@ -689,7 +689,8 @@ public class TFSMaster {
             System.out.println(e.getMessage());
         }
 	}
-	/*If we want to send separately of listening, we'll need a new port*/
+	*/
+	/*If we want to send separately of listening, we'll need a new port
 	private void sendTraffic(TFSMessage current){
 		try (
             Socket messageSocket = new Socket(current.getName(), portNumber);
@@ -706,4 +707,5 @@ public class TFSMaster {
         } 
 	}
 	*/
+	
 }

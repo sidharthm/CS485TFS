@@ -1,16 +1,26 @@
 import java.io.*;
+import java.util.ArrayList;
 public class TFSMessage implements Serializable{
 	//Data fields for the message go here
 	private String messageSource; // IP of the sender
-	private boolean hasInfo = false; // whether or not the message has been altered
+	//private boolean hasInfo = false; // whether or not the message has been altered
 	public enum Type {MASTER, CLIENT, CHUNK};
 	private Type sourceType;
-
+	
+	ArrayList<String> path;
+	String fileName;
+	byte[] raw_data;
+	int recursiveDeleteNum;
+	int seekOffset;
+	String errorMessage;
+	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETEFILE,DELETEDIRECTORY,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,ERROR,CREATEREPLICA,NONE};
+	private mType messageType;
 	
 	public TFSMessage(){
 		/*Null constructor for receiving messages*/
 		messageSource = null;
 		sourceType = null;
+		messageType = mType.NONE;
 	}
 	public TFSMessage(String senderName, Type senderType){
 		/*Basic constructor to set up attributes of the message for the sender*/
@@ -29,13 +39,13 @@ public class TFSMessage implements Serializable{
 		//the ObjectOutputStream is sending the fields as either writeObject or writeInt, just preserver the order
 		out.writeObject(messageSource);
 		out.writeObject(sourceType);
-		out.writeBoolean(hasInfo);
+		out.writeObject(messageType);
 	}
 	private void readObject(ObjectInputStream in)throws IOException, ClassNotFoundException{
 		//following the order from writeObject, just load things into variables
 		messageSource = (String)in.readObject();
 		sourceType = (Type)in.readObject();
-		hasInfo = in.readBoolean();
+		messageType = (mType)in.readObject();
 	}
 	private void readObjectNoData() throws ObjectStreamException{
 		//this is just to say that something went wrong etc. 
@@ -47,14 +57,14 @@ public class TFSMessage implements Serializable{
 	public String getName(){ //Getter for the source IP
 		return messageSource;
 	}
-	public Type getType(){ //Getter for the Type
+	public Type getSourceType(){ //Getter for the Type
 		return sourceType;
 	}
-	public void setInfo(){ //Flag for significant changes to the message
-		hasInfo = true;
+	public mType getMessageType(){
+		return messageType;
 	}
-	public boolean hasData(){ //Check flag for significant changes to the message
-		return hasInfo;
+	public void setMessageType(mType m){
+		messageType = m;
 	}
 	
 }

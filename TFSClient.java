@@ -166,6 +166,7 @@ public class TFSClient{
 			return false;
 		else 
 			System.out.println("Invalid command");
+		//if (flag for needing a server response) listenForResponse()
 		console();
 		return true;
 	}
@@ -438,16 +439,15 @@ public class TFSClient{
 		//if (master != null)
 			//console();
 	}
-	private void listenForResponse(){
+	private void listenForResponse() throws ClassNotFoundException{
 	/*Throw this method in before calling console again*/
 			try (
-			serverSocket =
-                new ServerSocket(portNumber);
-            ObjectOutputStream out =
-                new ObjectOutputStream(clientSocket.getOutputStream()); //To send messages, probably not necessary here
+			ServerSocket serverSocket = new ServerSocket(portNumber);
+			Socket clientSocket = serverSocket.accept();
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
         ) {
-			while(!incomingMessage.hasInfo()){
+			//we could use a timer to keep it from hanging indefintely
+			while(incomingMessage.getMessageType() != TFSMessage.mType.NONE){
 				incomingMessage.receiveMessage(in); //call readObject 
 			}
 			serverSocket.close();
@@ -456,6 +456,10 @@ public class TFSClient{
                 + portNumber + " or listening for a connection");
             System.out.println(e.getMessage());
         }
+		parseMessage(incomingMessage);
+	}
+	private void parseMessage(TFSMessage t){
+		//read the data from TFSMessage and call the appropriate response 
 	}
 	
 	public static void main (String[]args){

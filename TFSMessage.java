@@ -7,13 +7,13 @@ public class TFSMessage implements Serializable{
 	public enum Type {MASTER, CLIENT, CHUNK};
 	private Type sourceType;
 	
-	ArrayList<String> path;
+	String[] path;
 	String fileName;
 	byte[] raw_data;
 	int recursiveDeleteNum;
 	int seekOffset;
 	String errorMessage;
-	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETEFILE,DELETEDIRECTORY,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,ERROR,CREATEREPLICA,NONE};
+	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,ERROR,CREATEREPLICA,NONE};
 	private mType messageType;
 	
 	public TFSMessage(){
@@ -51,10 +51,10 @@ public class TFSMessage implements Serializable{
 		//this is just to say that something went wrong etc. 
 	}
 /*Getters & Setters*/
-	public void setName(String s){ //Setter for the source IP
+	public void setSource(String s){ //Setter for the source IP
 		messageSource = s;
 	}
-	public String getName(){ //Getter for the source IP
+	public String getSource(){ //Getter for the source IP
 		return messageSource;
 	}
 	public Type getSourceType(){ //Getter for the Type
@@ -65,6 +65,30 @@ public class TFSMessage implements Serializable{
 	}
 	public void setMessageType(mType m){
 		messageType = m;
+	}
+	public void setPath(String[] p){
+		path = p;
+	}
+	public String[] getPath(){
+		return path;
+	}
+	public void setFileName(String s){
+		fileName = s;
+	}
+	public String getFileName(){
+		return fileName;
+	}
+	public void setOffset(int o){
+		seekOffset = o;
+	}
+	public int getOffset(){
+		return seekOffset;
+	}
+	public void setBytes(byte[] a){
+		raw_data = a;
+	}
+	public byte[] getBytes(){
+		return raw_data;
 	}
 	
 }

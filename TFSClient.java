@@ -60,6 +60,9 @@ public class TFSClient{
 			myName = messageSocket.getLocalAddress().toString(); //Convert client's IP address to a string
 			myName = myName.substring(1); //Get rid of the first slash
 			System.out.println(myName); //Print-out to confirm contents
+			TFSMessage handshakeMessage = new TFSMessage(myName,TFSMessage.Type.CLIENT);
+			handshakeMessage.setMessageType(TFSMessage.mType.HANDSHAKE);
+			handshakeMessage.sendMessage(out);
 			messageSocket.close();//Done, so let's close this
         } catch (UnknownHostException e) {
             System.err.println("Error: Don't know about host " + hostName);
@@ -166,6 +169,8 @@ public class TFSClient{
 			return false;
 		else 
 			System.out.println("Invalid command");
+		sendMessageToMaster();
+		listenForResponse();
 		//if (flag for needing a server response) listenForResponse()
 		console();
 		return true;
@@ -315,6 +320,9 @@ public class TFSClient{
 		}
 		System.out.println("Client: Sending createDirectory request to Master.");
 		//master.createDirectory(path, d[d.length-1],true);
+		outgoingMessage.setMessageType(TFSMessage.mType.CREATEDIRECTORY);
+		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(d[d.length-1]);
 	}
 	
 	private void makeDirectory(String[] d) {
@@ -323,7 +331,10 @@ public class TFSClient{
 			path[i] = d[i];
 		}
 		System.out.println("Client: Sending createDirectory request to Master.");
-		master.createDirectory(path, d[d.length-1],true);
+		//master.createDirectory(path, d[d.length-1],true);
+		outgoingMessage.setMessageType(TFSMessage.mType.CREATEDIRECTORY);
+		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(d[d.length-1]);
 	}
 	
 	private void makeDirectory(String name){
@@ -334,7 +345,10 @@ public class TFSClient{
 			path[i] = d[i];
 		}
 		System.out.println("Client: Sending createDirectory request to Master.");
-		master.createDirectory(path, d[d.length-1],true);
+		//master.createDirectory(path, d[d.length-1],true);
+		outgoingMessage.setMessageType(TFSMessage.mType.CREATEDIRECTORY);
+		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(d[d.length-1]);
 	}
 	
 	private void seekFile(){
@@ -345,7 +359,11 @@ public class TFSClient{
 			RandomAccessFile f = new RandomAccessFile(file, "r");
 			byte[] b = new byte[(int)f.length()];
 			f.read(b);
-			master.seek(d,offset,b);
+			//master.seek(d,offset,b);
+			outgoingMessage.setMessageType(TFSMessage.mType.SEEK);
+			outgoingMessage.setPath(d);
+			outgoingMessage.setOffset(offset);
+			outgoingMessage.setBytes(b);
 		}
 		catch (IOException e) {
 			e.printStackTrace();
@@ -355,7 +373,9 @@ public class TFSClient{
 	
 	private void remove(){
 		String[]d = commands[1].split("/");
-		master.recursiveDelete(d, true);
+		//master.recursiveDelete(d, true);
+		outgoingMessage.setMessageType(TFSMessage.mType.DELETE);
+		outgoingMessage.setPath(d);
 		//master.delete(d, this);
 	}
 	
@@ -365,7 +385,9 @@ public class TFSClient{
 		for (int i = 0; i < d.length-1; i++) {
 			path[i] = d[i];
 		}
-		master.createFileNoID(path, d[d.length-1], true, true);
+		//master.createFileNoID(path, d[d.length-1], true, true);
+		outgoingMessage.setMessageType(TFSMessage.mType.CREATEFILE);
+		outgoingMessage.setFileName(d[d.length-1]);
 		System.out.println("Create File");
 	}
 	//Messages
@@ -439,7 +461,21 @@ public class TFSClient{
 		//if (master != null)
 			//console();
 	}
-	private void listenForResponse() throws ClassNotFoundException{
+	private void sendMessageToMaster(){
+		try (
+            Socket messageSocket = new Socket(hostName, portNumber);
+            ObjectOutputStream out = new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
+        ) {
+			outgoingMessage.sendMessage(out); //send the message to the server
+        } catch (UnknownHostException e) {
+            System.err.println("Don't know about host " + hostName);
+			Error = true;
+        } catch (IOException e) {
+            System.err.println("Couldn't get I/O for the connection to " + hostName);
+			Error = true;
+        } 
+	}
+	private void listenForResponse(){
 	/*Throw this method in before calling console again*/
 			try (
 			ServerSocket serverSocket = new ServerSocket(portNumber);
@@ -455,11 +491,22 @@ public class TFSClient{
             System.out.println("Exception caught when trying to listen on port "
                 + portNumber + " or listening for a connection");
             System.out.println(e.getMessage());
-        }
+        } catch (ClassNotFoundException e){
+			System.out.println("Class error found when trying to listen to port " + portNumber);
+			System.out.println(e.getMessage());
+		}
 		parseMessage(incomingMessage);
 	}
 	private void parseMessage(TFSMessage t){
 		//read the data from TFSMessage and call the appropriate response 
+		switch(t.getMessageType()){
+			case ERROR:
+				error();
+				break;
+			default:
+				System.out.println("done");
+				break;
+		}
 	}
 	
 	public static void main (String[]args){

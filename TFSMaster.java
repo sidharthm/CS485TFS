@@ -665,6 +665,14 @@ public class TFSMaster {
 	private void parseMessage(TFSMessage m){
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
+		switch (m.getMessageType()){
+			case HANDSHAKE:
+				System.out.println("Received handshake from " + m.getSourceType().toString() + " " + m.getSource());
+				break;
+			default:
+				System.out.println("Invalid message");
+				break;
+		}
 	}
 	private TFSMessage resetMessage(TFSMessage m){
 		//change all parameters besides messageSource and sourceType to null types 
@@ -682,8 +690,9 @@ public class TFSMaster {
 			TFSMessage incomingMessage = new TFSMessage(); //create a new MessageObject, I think we should have the constructor set everything to null when it's initialized
 			incomingMessage.receiveMessage(in); //call readObject 
 			if (incomingMessage.getMessageType() != TFSMessage.mType.NONE){ //if we received data
+				System.out.println("Received a message");
 				q.add(incomingMessage);
-			}
+			} 
 			/*
 			//Might make more sense to have an outgoingMessages Queue, and to send the Outgoing message with the proper flag set right after you read
 			TFSMessage current = outgoingMessages.remove(0);
@@ -695,7 +704,7 @@ public class TFSMaster {
         } catch (IOException e) {
             System.out.println("Exception caught when trying to listen on port "
                 + portNumber + " or listening for a connection");
-            System.out.println(e.getMessage());
+            e.printStackTrace();
         } catch (ClassNotFoundException e){
 		System.out.println("error");
 	}

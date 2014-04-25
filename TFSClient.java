@@ -74,6 +74,8 @@ public class TFSClient{
 		
 		//Here, we initialize the TFSMessage object that the Client will send out with the appropriate information about the client machine
 		outgoingMessage = new TFSMessage(myName,TFSMessage.Type.CLIENT);
+		incomingMessage = new TFSMessage();
+		
 		System.out.println("Initialization of Client complete");
 	}
 	
@@ -449,10 +451,10 @@ public class TFSClient{
 	}
 	
 	public void complete() {
-		if (master != null) {
+		//if (master != null) {
 			System.out.println("Client: Request completed.");
 			//console();
-		}
+		//}
 	}
 	
 	public void error() {
@@ -483,7 +485,7 @@ public class TFSClient{
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
         ) {
 			//we could use a timer to keep it from hanging indefintely
-			while(incomingMessage.getMessageType() != TFSMessage.mType.NONE){
+			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
 				incomingMessage.receiveMessage(in); //call readObject 
 			}
 			serverSocket.close();
@@ -502,6 +504,9 @@ public class TFSClient{
 		switch(t.getMessageType()){
 			case ERROR:
 				error();
+				break;
+			case SUCCESS:
+				complete();
 				break;
 			default:
 				System.out.println("done");

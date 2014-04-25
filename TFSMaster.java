@@ -221,13 +221,17 @@ public class TFSMaster {
 	public boolean createDirectory(String[] path, String name, boolean write) {
 		TFSNode directory = searchTree(path,0,root);
 		if (directory == null) {
-			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			System.out.println("Master: Error, no directory exists.");		
+			outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+			sendTraffic(outgoingMessage);
+			//client.error();
 			return false;
 		}
 		else if (directory.getIsFile()) {
-			System.out.println("Master: Error, end of path is not a directory.");
-			client.error();
+			System.out.println("Master: Error, end of path is not a directory.");		
+			outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+			sendTraffic(outgoingMessage);
+			//client.error();
 			return false;
 		}
 		else {
@@ -243,10 +247,15 @@ public class TFSMaster {
 				directory.getChildren().add(newNode);
 				if (write)
 					writeLogEntry("createDirectory",path,name,-1);
-				client.complete();
+				//client.complete();
+				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				sendTraffic(outgoingMessage);
+				
 				return true;
 			}
-			client.error();
+			//client.error();		
+			outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+			sendTraffic(outgoingMessage);
 			return false;
 		}
 	}
@@ -653,21 +662,28 @@ public class TFSMaster {
 		//call startThread on the master's thread
 	}
 	private void run(){
-		try {
-		incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
-		if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
-			parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
-		}
-		} catch (ClassNotFoundException e){
-			System.out.println("error");
+		while (incomingMessages.isEmpty()){//REMOVE
+			try {
+			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
+			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
+				parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+			}
+			} catch (ClassNotFoundException e){
+				System.out.println("error");
+			}
 		}
 	}
 	private void parseMessage(TFSMessage m){
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
+		outgoingMessage.setDestination(m.getSource());
 		switch (m.getMessageType()){
 			case HANDSHAKE:
 				System.out.println("Received handshake from " + m.getSourceType().toString() + " " + m.getSource());
+				break;
+			case CREATEDIRECTORY:
+				System.out.println("Creating directory per request from " + m.getSource());
+				createDirectory(m.getPath(),m.getFileName(),true);
 				break;
 			default:
 				System.out.println("Invalid message");
@@ -711,22 +727,21 @@ public class TFSMaster {
 	return q;
 	}
 	
-	/*If we want to send separately of listening, we'll need a new port
+	/*If we want to send separately of listening, we'll need a new port*/
 	private void sendTraffic(TFSMessage current){
 		try (
-            Socket messageSocket = new Socket(current.getName(), portNumber);
+            Socket messageSocket = new Socket(current.getDestination(), portNumber);
             ObjectOutputStream out =
                 new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
         ) {
 			current.sendMessage(out);
         } catch (UnknownHostException e) {
-            System.err.println("Error: Don't know about host " + hostName);
+            System.err.println("Error: Don't know about host " + current.getDestination());
             System.exit(1);
         } catch (IOException e) {
-            System.err.println("Error: Couldn't get I/O for the connection to " + hostName);
+            System.err.println("Error: Couldn't get I/O for the connection to " + current.getDestination());
             System.exit(1);
         } 
 	}
-	*/
 	
 }

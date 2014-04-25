@@ -132,5 +132,6 @@ public class TFSMasterSwitchboard implements Runnable{
 	}
 	
 	public static void main(String[] args) {
+		TFSMasterSwitchboard testBoard = new TFSMasterSwitchboard();
 	}
 }

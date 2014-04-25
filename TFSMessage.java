@@ -66,7 +66,7 @@ public class TFSMessage implements Serializable{
 				out.writeObject(fileName);
 				out.writeObject(raw_data);
 				break;
-			case COUNTFILES
+			case COUNTFILES:
 			case RECURSIVECREATE:
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
@@ -109,7 +109,7 @@ public class TFSMessage implements Serializable{
 				fileName = (String)in.readObject();
 				raw_data = (byte[])in.readObject();
 				break;
-			case COUNTFILES
+			case COUNTFILES:
 			case RECURSIVECREATE:
 				break;
 			case CREATEREPLICA:
@@ -117,6 +117,7 @@ public class TFSMessage implements Serializable{
 			case SUCCESS:
 			case ERROR:
 				break;
+		}
 	}
 	private void readObjectNoData() throws ObjectStreamException{
 		//this is just to say that something went wrong etc. 

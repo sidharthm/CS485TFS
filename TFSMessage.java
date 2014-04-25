@@ -7,16 +7,16 @@ public class TFSMessage implements Serializable{
 	//private boolean hasInfo = false; // whether or not the message has raw data REMOVE -- better to do a switch on the Type and send/read accordingly
 	public enum Type {MASTER, CLIENT, CHUNK};
 	private Type sourceType;
-	
+
 	String[] path;
 	String fileName;
 	byte[] raw_data;
-	int recursiveDeleteNum;
+	int recursiveCreateNum;
 	int seekOffset;
 	String errorMessage;
-	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE};
+	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE,INITIALIZE,PRINT};
 	private mType messageType;
-	
+
 	public TFSMessage(){
 		/*Null constructor for receiving messages*/
 		messageSource = null;
@@ -76,7 +76,7 @@ public class TFSMessage implements Serializable{
 			case SUCCESS:
 			case ERROR:
 				break;
-		}		
+		}
 	}
 	private void readObject(ObjectInputStream in)throws IOException, ClassNotFoundException{
 		//following the order from writeObject, just load things into variables
@@ -175,4 +175,12 @@ public class TFSMessage implements Serializable{
 		hasInfo = b;
 	}
 	*/
+	
+	public int getFileNum() {
+		return recursiveCreateNum;
+	}
+	
+	public void setFileNum(int r) {
+		recursiveCreateNum = r;
+	}
 }

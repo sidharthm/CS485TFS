@@ -4,7 +4,7 @@ public class TFSMessage implements Serializable{
 	//Data fields for the message go here
 	private String messageSource; // IP of the sender
 	private String messageDestination; // IP this is going to (only used by the master)
-	private boolean hasInfo = false; // whether or not the message has raw data
+	//private boolean hasInfo = false; // whether or not the message has raw data REMOVE -- better to do a switch on the Type and send/read accordingly
 	public enum Type {MASTER, CLIENT, CHUNK};
 	private Type sourceType;
 	
@@ -41,34 +41,82 @@ public class TFSMessage implements Serializable{
 		out.writeObject(messageSource);
 		out.writeObject(sourceType);
 		out.writeObject(messageType);
-		if (messageType != mType.HANDSHAKE){
-			out.writeObject(path);
-			out.writeObject(fileName);
-			out.writeBoolean(hasInfo);
-			if (hasInfo){
-				out.writeInt(raw_data.length);
-				for (int i = 0; i < raw_data.length; i++)
-					out.writeByte(raw_data[i]);
-			}
-		}
-		
+		switch (messageType){
+			case CREATEDIRECTORY:
+			case CREATEFILE:
+				out.writeObject(path);
+				out.writeObject(fileName);
+				break;
+			case DELETE:
+				out.writeObject(path);
+				break;
+			case SEEK:
+				out.writeObject(path);
+				out.writeInt(seekOffset);
+				out.writeObject(raw_data);
+				break;
+			case SIZEDAPPEND:
+				//Where is append with size?
+			case APPEND:
+				out.writeObject(path);
+				out.writeObject(raw_data);
+				break;
+			case READFILE:
+				out.writeObject(path);
+				out.writeObject(fileName);
+				out.writeObject(raw_data);
+				break;
+			case COUNTFILES
+			case RECURSIVECREATE:
+				break;
+			/*SUCCESS,ERROR,CREATEREPLICA*/
+				//Check Test 3
+			case CREATEREPLICA:
+				break;
+			case SUCCESS:
+			case ERROR:
+				break;
+		}		
 	}
 	private void readObject(ObjectInputStream in)throws IOException, ClassNotFoundException{
 		//following the order from writeObject, just load things into variables
 		messageSource = (String)in.readObject();
 		sourceType = (Type)in.readObject();
 		messageType = (mType)in.readObject();
-		if (messageType != mType.HANDSHAKE) {
-			path = (String[])in.readObject();
-			fileName = (String)in.readObject();
-			hasInfo = in.readBoolean();
-			if (hasInfo){
-				int length = in.readInt();
-				raw_data = new byte[length];
-				for (int i = 0; i < length; i++)
-					raw_data[i] = in.readByte();
-			}
-		}
+		
+		switch (messageType){
+			case CREATEDIRECTORY:
+			case CREATEFILE:
+				path = (String[])in.readObject();
+				fileName = (String)in.readObject();
+				break;
+			case DELETE:
+				path = (String[])in.readObject();
+				break;
+			case SEEK:
+				path = (String[])in.readObject();
+				seekOffset = (int)in.readObject();
+				raw_data = (byte[])in.readObject();
+				break;
+			case SIZEDAPPEND:
+				//Where is append with size?
+			case APPEND:
+				path = (String[])in.readObject();
+				raw_data = (byte[])in.readObject();
+				break;
+			case READFILE:
+				path = (String[])in.readObject();
+				fileName = (String)in.readObject();
+				raw_data = (byte[])in.readObject();
+				break;
+			case COUNTFILES
+			case RECURSIVECREATE:
+				break;
+			case CREATEREPLICA:
+				break;
+			case SUCCESS:
+			case ERROR:
+				break;
 	}
 	private void readObjectNoData() throws ObjectStreamException{
 		//this is just to say that something went wrong etc. 
@@ -119,11 +167,12 @@ public class TFSMessage implements Serializable{
 	public byte[] getBytes(){
 		return raw_data;
 	}
+	/*
 	public boolean getDataState(){
 		return hasInfo;
 	}
 	public void setDataState(boolean b){
 		hasInfo = b;
 	}
-	
+	*/
 }

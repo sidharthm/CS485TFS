@@ -734,6 +734,7 @@ public class TFSMaster {
             ObjectOutputStream out =
                 new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
         ) {
+			System.out.println("Sending response to " + current.getDestination());
 			current.sendMessage(out);
         } catch (UnknownHostException e) {
             System.err.println("Error: Don't know about host " + current.getDestination());

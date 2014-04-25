@@ -307,7 +307,9 @@ public class TFSClient{
 			RandomAccessFile f = new RandomAccessFile(file, "r");
 			byte[] b = new byte[(int)f.length()];
 			f.read(b);
-			master.appendToFileWithSize(d,b);
+			//master.appendToFileWithSize(d,b);
+			outgoingMessage.setPath(d);
+			outgoingMessage.setBytes(b);
 		}
 		catch (IOException e) {
 			e.printStackTrace();
@@ -389,6 +391,7 @@ public class TFSClient{
 		}
 		//master.createFileNoID(path, d[d.length-1], true, true);
 		outgoingMessage.setMessageType(TFSMessage.mType.CREATEFILE);
+		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
 		System.out.println("Create File");
 	}
@@ -479,13 +482,17 @@ public class TFSClient{
 	}
 	private void listenForResponse(){
 	/*Throw this method in before calling console again*/
-			try (
+		System.out.println("Listening for response");
+		System.out.println(incomingMessage.getMessageType().toString());
+		try (
 			ServerSocket serverSocket = new ServerSocket(portNumber);
 			Socket clientSocket = serverSocket.accept();
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
         ) {
 			//we could use a timer to keep it from hanging indefintely
+			System.out.println(incomingMessage.getMessageType().toString());
 			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
+				System.out.print("l");
 				incomingMessage.receiveMessage(in); //call readObject 
 			}
 			serverSocket.close();

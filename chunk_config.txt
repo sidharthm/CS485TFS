@@ -1,0 +1,2 @@
+CHUNKSERVER localhost(for now, eventually 68.181.174.62)
+LOCATION C:\java_progs\img\

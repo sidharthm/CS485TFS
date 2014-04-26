@@ -198,10 +198,6 @@ public class TFSClient{
 			}
 			strings.add(""+1);
 			Collections.reverse(strings);
-			for (String s:strings){
-				System.out.println(s);
-			}
-			System.out.println(" ");
 			String[] path = strings.toArray(new String[strings.size()]);
 			makeDirectory(path);
 		}

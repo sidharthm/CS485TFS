@@ -21,6 +21,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	private TFSMessage outgoingMessage; //This message is used to convey information to other entities in the system
 	private TFSMessage heartbeatMessage;//This message is used to ensure chunk servers are still operational
 	private ArrayList<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	private TFSNode root;
 	
 	public TFSMasterSwitchboard() {
 		/*TEMPORARY: Master reads its own data from the config file so it has its own IP*/
@@ -39,9 +40,14 @@ public class TFSMasterSwitchboard implements Runnable{
 		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		incomingMessages = new ArrayList<TFSMessage>();
 		System.out.println("My ip is " + myName);
+		root = new TFSNode(false,null,-1,"root");
 		mPrime = new TFSMaster(this);
 		m2 = new TFSMaster(this);
 		initialized = false;
+	}
+	
+	public TFSNode getRoot() {
+		return root;
 	}
 	
 	public void run() {

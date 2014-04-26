@@ -17,15 +17,18 @@ public class TFSMaster implements Runnable {
 	 */
 	File logfile;
 	
+	TFSMasterSwitchboard switchboard;
+	
 	
 	
 	private ArrayList<TFSMessage> incomingMessages; // This Queue will store any incoming messages
 	
 
-	public TFSMaster(){
+	public TFSMaster(TFSMasterSwitchboard s){
 		/*Set up all messages with the appropriate initialization*/
 		incomingMessages = new ArrayList<TFSMessage>();
 		root = new TFSNode(false,null,-1,"root");
+		switchboard = s;
 	}
 
 	/**

@@ -39,8 +39,8 @@ public class TFSMasterSwitchboard implements Runnable{
 		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		incomingMessages = new ArrayList<TFSMessage>();
 		System.out.println("My ip is " + myName);
-		mPrime = new TFSMaster();
-		m2 = new TFSMaster();
+		mPrime = new TFSMaster(this);
+		m2 = new TFSMaster(this);
 		initialized = false;
 	}
 	

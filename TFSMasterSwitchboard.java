@@ -42,6 +42,11 @@ public class TFSMasterSwitchboard implements Runnable{
 		mPrime = new TFSMaster();
 		m2 = new TFSMaster();
 		initialized = false;
+		
+		Thread thread2 = new Thread(mPrime);
+		Thread thread3 = new Thread(m2);
+		thread2.start();
+		thread3.start();
 	}
 	
 	public void run() {
@@ -133,5 +138,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	
 	public static void main(String[] args) {
 		TFSMasterSwitchboard testBoard = new TFSMasterSwitchboard();
+		Thread thread = new Thread(testBoard);
+		thread.start();
 	}
 }

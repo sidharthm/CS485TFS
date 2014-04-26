@@ -566,10 +566,20 @@ public class TFSClient{
 			case SUCCESS:
 				complete();
 				break;
+			case CHUNKSERVER:
+				//request=t.getDestChunk();
+				//bytes=t.getBytes();
+;				//sendRequest(request);
 			default:
 				System.out.println("done");
 				break;
 		}
+	}
+	
+	private void sendRequest(String request, byte[] b){
+		outgoingMessage.setMessageType(TFSMessage.mType.READFILE);
+		outgoingMessage.setBytes(b);
+		outgoingMessage.setLocation(request);
 	}
 	
 	public static void main (String[]args){

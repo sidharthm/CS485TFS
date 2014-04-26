@@ -86,7 +86,7 @@ public class TFSMaster implements Runnable {
 					path[i] = p1[i];
 				}
 				path[p1.length] = p2;
-				recursiveDelete(path,true);
+				recursiveDeleteInitial(path,true);
 			}
 			else if (type == TFSMessage.mType.INITIALIZE) {
 				initializeStructure();
@@ -538,6 +538,31 @@ public class TFSMaster implements Runnable {
 		}
 		}
 	}
+	
+	public boolean deleteDirectory(String[] path, boolean write) {
+		TFSNode file = searchTree(path,0,root,new NodeLock("IX"),new NodeLock("X"),true);
+		synchronized(file) {
+		if (file == null) {
+			System.out.println("Master: Error, no directory exists,");
+			return false;
+		}
+		else if (file.getIsFile()) {
+			System.out.println("Master: Error, end of path is not a directory.");
+			return false;
+		}
+		else {
+			deleteDirectoryNode(file);
+			if (write)
+				writeLogEntry("deleteDirectory",path,null,-1);
+			String[] path2 = new String[path.length-1];
+			for (int i = 0; i < path2.length; i++) {
+				path2[i] = path[i];
+			}
+			removeLocks(path2,0,root,new NodeLock("IX"),new NodeLock("IX"));
+			return true;
+		}
+		}
+	}
 	/**
 	 * 
 	 * @param file
@@ -566,13 +591,8 @@ public class TFSMaster implements Runnable {
 	 */
 	public void deleteDirectoryNode(TFSNode directory) {
 		synchronized(directory) {
-		if (directory.checkLocks(new NodeLock("X"))) {
 			directory.getParent().getChildren().remove(directory);
 			directory = null;
-		}
-		else {
-			System.out.println("Unable to access directory");
-		}
 		}
 	}
 	
@@ -634,6 +654,45 @@ public class TFSMaster implements Runnable {
 		}
 	}
 	
+	public boolean recursiveDeleteInitial(String[] path, boolean write) {
+		TFSNode file = searchTree(path,0,root,new NodeLock("IX"),new NodeLock("X"),false);
+		synchronized(file) {
+		if (file == null) {
+			System.out.println("Master: Error, no directory exists.");
+			client.error();
+			return false;
+		}
+		else {
+			recursiveDeleteFile(path, file, write);
+			//if (write)
+				//writeLogEntry("recursiveCreate",path,null,(long)num);
+			client.complete();
+			return true;
+		}
+		}
+	}
+	
+	public void recursiveDeleteFile(String[] path, TFSNode node, boolean write) {
+		synchronized(node) {
+				String[] path2 = new String[path.length+1];
+				for (int i = 0; i < path.length; i++) {
+					path2[i] = path[i];
+				}
+				for (int i = 0; i < node.getChildren().size(); i++) {
+					TFSNode newNode = node.getChildren().get(i);
+					path2[path2.length-1] = newNode.getName();
+					recursiveDeleteFile(path2, newNode, true);
+					i = i-1;
+				}
+				if (node.getIsFile()) {
+					deleteFile(path,true);
+				}
+				else {
+					deleteDirectory(path,true);
+				}
+		}
+	}
+	
 	/**
 	 * 
 	 * @param path
@@ -658,6 +717,12 @@ public class TFSMaster implements Runnable {
 			int j = i+1;
 			String name = "File" + j;
 			createFileNoID(path,name,true,true);
+			try {
+				Thread.sleep(1);
+			}
+			catch(Exception e) {
+				e.printStackTrace();
+			}
 		}
 		}
 	}
@@ -1003,6 +1068,14 @@ public class TFSMaster implements Runnable {
 					}
 					deleteFile(path,false);
 				}
+				else if (line.equals("deleteDirectory")) {
+					int length = Integer.parseInt(in.readLine());
+					String[] path = new String[length];
+					for (int i = 0; i < length; i++) {
+						path[i]=in.readLine();
+					}
+					deleteDirectory(path,false);
+				}
 				else if (line.equals("recursiveDelete")) {
 					int length = Integer.parseInt(in.readLine());
 					String[] path = new String[length];
@@ -1030,77 +1103,4 @@ public class TFSMaster implements Runnable {
 			e.printStackTrace();
 		}
 	}
-/*
-	private void parseMessage(TFSMessage m){
-		//check the parameters of m, figure out the corresponding method to call for that
-		//those methods should finish by sending out the message and resetting the outgoingMessage 
-		outgoingMessage.setDestination(m.getSource());
-		switch (m.getMessageType()){
-			case HANDSHAKE:
-				System.out.println("Received handshake from " + m.getSourceType().toString() + " " + m.getSource());
-				break;
-			case CREATEDIRECTORY:
-				System.out.println("Creating directory per request from " + m.getSource());
-				createDirectory(m.getPath(),m.getFileName(),true);
-				break;
-			default:
-				System.out.println("Invalid message");
-				break;
-		}
-	}
-	private TFSMessage resetMessage(TFSMessage m){
-		//change all parameters besides messageSource and sourceType to null types 
-		return m;
-	}
-	private ArrayList<TFSMessage> listenForTraffic(ArrayList<TFSMessage> q) throws ClassNotFoundException{
-		try (
-			ServerSocket serverSocket =
-                new ServerSocket(portNumber);
-            Socket clientSocket = serverSocket.accept();     
-            ObjectOutputStream out =
-                new ObjectOutputStream(clientSocket.getOutputStream()); //To send messages, probably not necessary here
-            ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
-        ) {
-			TFSMessage incomingMessage = new TFSMessage(); //create a new MessageObject, I think we should have the constructor set everything to null when it's initialized
-			incomingMessage.receiveMessage(in); //call readObject 
-			if (incomingMessage.getMessageType() != TFSMessage.mType.NONE){ //if we received data
-				System.out.println("Received a message");
-				q.add(incomingMessage);
-			} 
-			//Might make more sense to have an outgoingMessages Queue, and to send the Outgoing message with the proper flag set right after you read
-			TFSMessage current = outgoingMessages.remove(0);
-			if (current.getMessageType() != TFSMessage.mType.NONE)
-				current.sendMessage(out);
-			else 
-				outgoingMessages.add(current);
-			
-        } catch (IOException e) {
-            System.out.println("Exception caught when trying to listen on port "
-                + portNumber + " or listening for a connection");
-            e.printStackTrace();
-        } catch (ClassNotFoundException e){
-		System.out.println("error");
-	}
-	return q;
-	}
-	*/
-	/*If we want to send separately of listening, we'll need a new port*/
-	/*
-	private void sendTraffic(TFSMessage current){
-		try (
-            Socket messageSocket = new Socket(current.getDestination(), portNumber);
-            ObjectOutputStream out =
-                new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
-        ) {
-			System.out.println("Sending response to " + current.getDestination());
-			current.sendMessage(out);
-        } catch (UnknownHostException e) {
-            System.err.println("Error: Don't know about host " + current.getDestination());
-            System.exit(1);
-        } catch (IOException e) {
-            System.err.println("Error: Couldn't get I/O for the connection to " + current.getDestination());
-            System.exit(1);
-        } 
-	}
-	*/
 }

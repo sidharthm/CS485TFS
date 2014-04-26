@@ -125,33 +125,37 @@ public class TFSClient{
 			createFile();
 			done=false;
 		}
-		else if(commands[0].equalsIgnoreCase("Test1")){
+		else if(commands[0].equalsIgnoreCase("Unit1")){
 			if(commands.length == 2)
-				testOne();
+				unitOne();
 		}
-		else if(commands[0].equalsIgnoreCase("Test2")){
+		else if(commands[0].equalsIgnoreCase("Unit2")){
 			if(commands.length == 3)
-				testTwo();
+				unitTwo();
 		}
-		else if(commands[0].equalsIgnoreCase("Test3")){
+		else if(commands[0].equalsIgnoreCase("Unit3")){
 			if(commands.length == 2)
-				testThree();
+				unitThree();
 		}
-		else if(commands[0].equalsIgnoreCase("Test4")){
+		else if(commands[0].equalsIgnoreCase("Unit4")){
 			if(commands.length == 3)
-				testFour();
+				unitFour();
 		}
-		else if(commands[0].equalsIgnoreCase("Test5")){
+		else if(commands[0].equalsIgnoreCase("Unit5")){
 			if(commands.length == 3)
-				testFive();
+				unitFive();
 		}
-		else if(commands[0].equalsIgnoreCase("Test6")){
+		else if(commands[0].equalsIgnoreCase("Unit6")){
 			if(commands.length == 3)
-				testSix();
+				unitSix();
 		}
-		else if(commands[0].equalsIgnoreCase("Test7")){
+		else if(commands[0].equalsIgnoreCase("Unit7")){
 			if(commands.length == 2)
-				testSeven();
+				unitSeven();
+		}
+		else if(commands[0].equalsIgnoreCase("Unit8")){
+			if(commands.length == 3)
+				unitEight();
 		}
 		else if (commands[0].equals("?")){
 			System.out.println("    Test1 <number of directories> - create directories");
@@ -165,7 +169,8 @@ public class TFSClient{
 		
 		
 		else if(commands[0].equals("print")) {	//Debugging purposes
-			master.printTree(master.getRoot());
+			//master.printTree(master.getRoot());//HERE
+			outgoingMessage.setMessageType(TFSMessage.mType.PRINT);
 		}
 		else if (commands[0].equals("exit"))
 			return false;
@@ -178,10 +183,29 @@ public class TFSClient{
 		return true;
 	}
 	
-	private void testOne(){
-		testone=Integer.parseInt(commands[1]);
-		String directory="";
-		for (int i = 1; i <= testone; i++) {
+	private void unitOne(){
+		int k=1;
+		int mult=1;
+		boolean first=false;
+		dir=Integer.parseInt(commands[1]);
+		sub=Integer.parseInt(commands[2]);
+		for (int i = 1; i <= dir; i++) {
+			ArrayList<String> strings = new ArrayList<String>();
+			int j = i;
+			while (j > 1) {
+				strings.add(""+j);
+				j =j- sub;
+			}
+			strings.add(""+1);
+			Collections.reverse(strings);
+			for (String s:strings){
+				System.out.println(s);
+			}
+			System.out.println(" ");
+			String[] path = strings.toArray(new String[strings.size()]);
+			makeDirectory(path);
+		}
+		/*for (int i = 1; i <= directories; i++) {
 			ArrayList<String> strings = new ArrayList<String>();
 			int j = i;
 			while (j >= 1) {
@@ -192,7 +216,6 @@ public class TFSClient{
 			String[] path = strings.toArray(new String[strings.size()]);
 			makeDirectory(path);
 		}
-		/*
 		int i=1;
 		int j;
 		while(i<=testone){
@@ -212,48 +235,67 @@ public class TFSClient{
 		*/
 	}
 	
-	private void testTwo(){
+	private void unitTwo(){
 		String[] d=commands[1].split("/");
 		int num = Integer.parseInt(commands[2]);
 		System.out.println("Client: Sending createFiles request to Master.");
-		master.recursiveCreateFileInitial(d, true, num);
+		//master.recursiveCreateFileInitial(d, true, num);//HERE
+		outgoingMessage.setMessageType(TFSMessage.mType.RECURSIVECREATE);
+		outgoingMessage.setPath(d);
+		outgoingMessage.setFileName(d[d.length-1]);
 	}
 	
-	private void testThree(){
+	private void unitThree(){
 		String[] delete=commands[1].split("/");
+		String[]path = new String[delete.length-1];
+		for (int i = 0; i < delete.length-1; i++) {
+			path[i] = delete[i];
+		}
 		System.out.println("Client: Sending deleteDirectories request to Master.");
-		master.recursiveDelete(delete,true);
+		//master.recursiveDelete(delete,true);
+		outgoingMessage.setMessageType(TFSMessage.mType.DELETE);
+		outgoingMessage.setPath(path);
+		//outgoingMessage.setFileName(delete[delete.length-1]);
 	}
 	
-	private void testFour(){
+	private void unitFour(){
 		String[] path = commands[2].split("/");
 		String[] p = new String[path.length-1];
 		for (int i = 0; i < p.length; i++) {
 			p[i] = path[i];
 		}
-		if (master.createFileNoID(p,path[path.length-1],true,true)) {
+		//if (master.createFileNoID(p,path[path.length-1],true,true)) {//HERE
 			File file = new File(commands[1]);
 			try {
 				RandomAccessFile f = new RandomAccessFile(file, "r");
 				byte[] b = new byte[(int)f.length()];
 				f.read(b);
 				System.out.println("Client: Sending copyFile request from local to TFS request to Master.");
-				master.appendToFileNoSize(path,b);
+				outgoingMessage.setMessageType(TFSMessage.mType.APPEND);
+				outgoingMessage.setPath(p);
+				outgoingMessage.setBytes(b);
+				//master.appendToFileNoSize(path,b);//HERE
 			}
 			catch (IOException e) {
 				System.out.println("Client: Error, can't locate local file path.");
 				e.printStackTrace();
 			}
-		}
+		//}
 		//else
 		//	System.out.println(" File exists in TFS.");
 	}
 	
-	private void testFive(){
-		String[]d=commands[1].split("/");
+	private void unitFive(){
+		String[] path = commands[1].split("/");
+		String[] p = new String[path.length-1];
+		for (int i = 0; i < p.length; i++) {
+			p[i] = path[i];
+		}
 		System.out.println("Client: Sending getFile request from TFS to local to Master.");
-		byte[] b = master.readFileNoSize(d);
-		if(!Error) {
+		//byte[] b = master.readFileNoSize(d);//HERE
+		outgoingMessage.setMessageType(TFSMessage.mType.READFILE);
+		outgoingMessage.setPath(path);
+		/*if(!Error) {
 			try {
 				File f = new File(commands[2]);
 				if(f.exists()) {
@@ -268,24 +310,30 @@ public class TFSClient{
 			catch (IOException e) {
 				e.printStackTrace();
 			}
-		}
+		}*/
 		Error = false;
 	}
 	
-	private void testSix(){
+	private void unitSix(){
 		String[] path = commands[2].split("/");
 		String[] p = new String[path.length-1];
 		for (int i = 0; i < p.length; i++) {
 			p[i] = path[i];
 		}
-		master.createFileNoID(p,path[path.length-1],true,false);
+		//master.createFileNoID(p,path[path.length-1],true,false);//HERE
+		outgoingMessage.setMessageType(TFSMessage.mType.CREATEFILE);
+		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(p[p.length-1]);
 		File file = new File(commands[1]);
 		try {
 			RandomAccessFile f = new RandomAccessFile(file, "r");
 			byte[] b = new byte[(int)f.length()];
 			f.read(b);
 			System.out.println("Client: Sending appendToFile request to Master.");
-			master.appendToFileWithSize(path,b);
+			//master.appendToFileWithSize(path,b);//HERE
+			outgoingMessage.setMessageType(TFSMessage.mType.APPEND);
+			outgoingMessage.setPath(path);
+			outgoingMessage.setBytes(b);
 		}
 		catch (IOException e) {
 			System.out.println("Client: Error, can't locate local file path.");
@@ -293,11 +341,17 @@ public class TFSClient{
 		}
 	}
 	
-	private void testSeven(){
+	private void unitSeven(){
 		String[] path = commands[1].split("/");
-		if(master.countFilesInNode(path) > 0) {
-			System.out.println("Client: " + master.countFilesInNode(path) + " file/s stored in TFS file.");
-		}
+		outgoingMessage.setMessageType(TFSMessage.mType.COUNTFILES);
+		outgoingMessage.setPath(path);
+		/*if(master.countFilesInNode(path) > 0) {//HERE
+			System.out.println("Client: " + master.countFilesInNode(path) + " file/s stored in TFS file.");//HERE
+		}*/
+	}
+	
+	private void unitEight(){
+		String[] path = commands[1].split("/");
 	}
 	
 	private void appendFile(){
@@ -308,6 +362,7 @@ public class TFSClient{
 			byte[] b = new byte[(int)f.length()];
 			f.read(b);
 			//master.appendToFileWithSize(d,b);
+			outgoingMessage.setMessageType(TFSMessage.mType.APPEND);
 			outgoingMessage.setPath(d);
 			outgoingMessage.setBytes(b);
 		}

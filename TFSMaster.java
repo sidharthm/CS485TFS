@@ -664,6 +664,12 @@ public class TFSMaster implements Runnable {
 			for (int i = 0; i < directory.getChildren().size(); i++) {
 				if (directory.getChildren().get(i).getName().equals(name)) {
 					System.out.println("Master: Directory already exists.");
+					TFSMessage errorMSG = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+					errorMSG.setMessageType(TFSMessage.mType.ERROR);
+					for (int i = 0; i < switchboard.getClients().size(); i++){
+						errorMSG.setDestination(switchboard.getClients().get(i));
+						sendMessage(errorMSG);
+					}
 					cont = false;
 				}
 			}

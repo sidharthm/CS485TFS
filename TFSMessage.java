@@ -175,7 +175,7 @@ public class TFSMessage implements Serializable{
 				for (int i = 0; i < path.length; i++)
 					out.writeObject(path[i]);
 				out.writeInt(replicas);
-				out.writeInt(numFiles);
+				out.writeInt(recursiveCreateNum);
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
 				//Check Test 3
@@ -324,7 +324,7 @@ public class TFSMessage implements Serializable{
 					for (int i = 0; i < length; i++)
 						path[i] = (String)in.readObject();
 				replicas = in.readInt();
-				numFiles = in.readInt();
+				recursiveCreateNum = in.readInt();
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
 				//Check Test 3

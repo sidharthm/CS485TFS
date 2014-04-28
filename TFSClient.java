@@ -140,11 +140,11 @@ public class TFSClient{
 			done=false;
 		}
 		else if(commands[0].equalsIgnoreCase("Unit1")){
-			if(commands.length == 2)
+			if(commands.length == 3)
 				unitOne();
 		}
 		else if(commands[0].equalsIgnoreCase("Unit2")){
-			if(commands.length == 3)
+			if(commands.length == 4)
 				unitTwo();
 		}
 		else if(commands[0].equalsIgnoreCase("Unit3")){
@@ -226,7 +226,12 @@ public class TFSClient{
 			strings.add(""+1);
 			Collections.reverse(strings);
 			String[] path = strings.toArray(new String[strings.size()]);
+			for (int l = 0; l < path.length; l++) {
+				System.out.println(path[l]);
+			}
 			makeDirectory(path);
+			sendMessageToMaster();
+			try { Thread.sleep(1000); } catch(InterruptedException e) {}
 		}
 	}
 	/**
@@ -235,12 +240,19 @@ public class TFSClient{
 	 */
 	private void unitTwo(){
 		String[] d=commands[1].split("/");
+		String[] path = new String[d.length-1];
+		for (int i = 0; i < path.length; i++) {
+			path[i] = d[i];
+		}
 		int num = Integer.parseInt(commands[2]);
+		int replicas = Integer.parseInt(commands[3]);
 		System.out.println("Client: Sending createFiles request to Master.");
 		//master.recursiveCreateFileInitial(d, true, num);//HERE
 		outgoingMessage.setMessageType(TFSMessage.mType.RECURSIVECREATE);
-		outgoingMessage.setPath(d);
+		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
+		outgoingMessage.setFileNum(num);
+		outgoingMessage.setReplicaNum(replicas);
 	}
 	/**
 	 * Runs the third test: Delete a hierarchical directory structure including the files in those directories.

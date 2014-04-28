@@ -104,6 +104,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	
 	public void addOutgoingMessage(TFSMessage m) {
 		synchronized(outgoingMessages) {
+			System.out.println("added here");
 			outgoingMessages.add(m);
 		}
 	}
@@ -116,7 +117,9 @@ public class TFSMasterSwitchboard implements Runnable{
 	
 	private void scheduler() {
 		try {
+			System.out.println("schedule" + outgoingMessages.size());
 			if (!outgoingMessages.isEmpty()) {
+				System.out.println("calling");
 				sendTraffic(outgoingMessages.remove(0));
 			}
 			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
@@ -146,6 +149,7 @@ public class TFSMasterSwitchboard implements Runnable{
                 new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
         ) {
 			current.sendMessage(out);
+			messageSocket.close();
         } catch (UnknownHostException e) {
             System.err.println("Error: Don't know about host " + current.getDestination());
             System.exit(1);
@@ -175,6 +179,7 @@ public class TFSMasterSwitchboard implements Runnable{
 				System.out.println("Received a message");
 				q.add(incomingMessage);
 			} 
+			clientSocket.close();
 			/*
 			//Might make more sense to have an outgoingMessages Queue, and to send the Outgoing message with the proper flag set right after you read
 			TFSMessage current = outgoingMessages.remove(0);

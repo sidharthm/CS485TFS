@@ -60,7 +60,9 @@ public class TFSMessage implements Serializable{
 		switch (messageType){
 			case CREATEDIRECTORY:
 				out.writeObject(fileName);
-				out.writeObject(path);
+				out.writeInt(path.length);
+				for (int i = 0; i < path.length; i++)
+					out.writeObject(path[i]);
 				break;
 			case CREATEFILE:
 				if (sourceType == Type.CLIENT) {
@@ -177,7 +179,11 @@ public class TFSMessage implements Serializable{
 		switch (messageType){
 			case CREATEDIRECTORY:
 				fileName = (String)in.readObject();
-				path = (String[])in.readObject();
+				int length = in.readInt();
+				path = new String[length];
+				for (int i = 0; i < length; i++)
+					path[i] = (String)in.readObject();
+				//path = (String[])in.readObject();
 				break;
 			case CREATEFILE:
 				if (sourceType == Type.CLIENT) {

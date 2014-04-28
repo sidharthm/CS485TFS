@@ -14,6 +14,7 @@ public class TFSMessage implements Serializable{
 	byte[] raw_data;
 	int recursiveCreateNum;
 	int seekOffset;
+	int numFiles; 
 	String errorMessage;
 	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE,INITIALIZE,PRINT};
 	private mType messageType;
@@ -283,5 +284,17 @@ public class TFSMessage implements Serializable{
 	*/
 	public long getFileID(){
 		return fileID;
+	}
+	/**
+	 * Getter for number of files 
+	*/
+	public void setNumFiles(int s){
+		numFiles = s;
+	}
+	/**
+	 * Setter for number of files 
+	*/
+	public int getNumFiles(){
+		return numFiles;
 	}
 }

@@ -183,7 +183,7 @@ public class TFSMasterSwitchboard implements Runnable{
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
 		TFSMessage.mType type = m.getMessageType();
 		if (type == TFSMessage.mType.HANDSHAKE){
-			m2.addMessage(m);
+			chunkServers.add(m.getSource());
 		}
 		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {
 			responses.add(m.getSource());

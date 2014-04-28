@@ -91,12 +91,12 @@ public class TFSMasterSwitchboard implements Runnable{
 		return root;
 	}
 	
-	public List<TFSMessage> getOutgoingMessages() {
-		return outgoingMessages;
-	}
-	
 	public ArrayList<String> getChunkServers() {
 		return chunkServers;
+	}
+	
+	public String getName() {
+		return myName;
 	}
 	
 	public void addOutgoingMessage(TFSMessage m) {

@@ -372,8 +372,11 @@ public class TFSMaster implements Runnable {
 		synchronized(node) {
 			if (node.getIsFile()) {
 				if (node.getReplicas().size() < node.getDesiredReplicas()) {
-					//TODO send file creation message
-					/*
+					TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+					m.setMessageType(TFSMessage.mType.CREATEFILE);
+					m.setDestination(IP);
+					m.setFileID(node.getId());
+					switchboard.addOutgoingMessage(m);
 					synchronized(lock) {
 						try {
 							waitingIP = IP;
@@ -382,7 +385,6 @@ public class TFSMaster implements Runnable {
 							e.printStackTrace();
 						}
 					}
-					*/
 					if (!killProcess) {
 						node.getReplicas().add(IP);
 					}
@@ -503,17 +505,8 @@ public class TFSMaster implements Runnable {
 					}
 				}
 				*/
-				try {
-					File file = new File("local/" + id);
-					file.createNewFile();
-					//Because write is always false, we should never be rewriting to the log entry
-					if (write)
-						writeLogEntry("createFileID",path,name,id,replicas);
-					removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-				}
-				catch (Exception e) {
-					e.printStackTrace();
-				}
+				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+				return true;
 			}
 			return false;
 		}
@@ -583,22 +576,23 @@ public class TFSMaster implements Runnable {
 				long id = System.currentTimeMillis();
 				TFSNode newNode = new TFSNode(true,directory,id,name,replicas);
 				directory.getChildren().add(newNode);
-				/*
-				synchronized(lock) {
-					try {
-						waitingIP = IP;
-						wait();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+				for (int i = 0; i < servers.length; i++) {
+					TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+					m.setMessageType(TFSMessage.mType.CREATEFILE);
+					m.setDestination(servers[i]);
+					m.setFileID(id);
+					switchboard.addOutgoingMessage(m);
+					synchronized(lock) {
+						try {
+							waitingIP = servers[i];
+							wait();
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
 					}
 				}
-				*/
 				if (!killProcess) {
 					try {
-						File file = new File("local/" + id);
-						file.createNewFile();
-						if (write)
-							writeLogEntry("createFileID",path,name,id,replicas);
 						removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 						//client.complete();
 						return true;
@@ -688,16 +682,21 @@ public class TFSMaster implements Runnable {
 			return false;
 		}
 		else {
-			/*
-			synchronized(lock) {
-				try {
-					waitingIP = IP;
-					wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+			for (int i = 0; i < file.getReplicas().size(); i++) {
+				TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+				m.setMessageType(TFSMessage.mType.DELETE);
+				m.setDestination(file.getReplicas().get(i));
+				m.setFileID(file.getId());
+				switchboard.addOutgoingMessage(m);
+				synchronized(lock) {
+					try {
+						waitingIP = file.getReplicas().get(i);
+						wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 			}
-			*/
 			String[] path2 = new String[path.length-1];
 			for (int i = 0; i < path2.length; i++) {
 				path2[i] = path[i];
@@ -982,22 +981,34 @@ public class TFSMaster implements Runnable {
 			return false;
 		}
 		else {
-			long id = file.getId();
-			try {
-				File jfile = new File("local/" + id);
-				RandomAccessFile f = new RandomAccessFile(jfile,"rw");
-				f.seek((long)offset);
-				f.write(bytes);
-				f.close();
+			for (int i = 0; i < file.getReplicas().size(); i++) {
+				TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+				m.setMessageType(TFSMessage.mType.SEEK);
+				m.setDestination(file.getReplicas().get(i));
+				m.setFileID(file.getId());
+				m.setOffset(offset);
+				m.setBytes(bytes);
+				switchboard.addOutgoingMessage(m);
+				synchronized(lock) {
+					try {
+						waitingIP = file.getReplicas().get(i);
+						wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			if (!killProcess) {
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 				//client.complete();
 				return true;
 			}
-			catch (IOException e) {
-				e.printStackTrace();
+			else {
+				killProcess = false;
+				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+				//client.error();
+				return false;
 			}
-			//client.error();
-			return false;
 		}
 		}
 	}
@@ -1026,25 +1037,34 @@ public class TFSMaster implements Runnable {
 			return false;
 		}
 		else {
-			long id = file.getId();
-			try {
-				File jfile = new File("local/" + id);
-				RandomAccessFile f = new RandomAccessFile(jfile,"rw");
-				f.seek(0);
-				f.skipBytes((int)f.length());
-				int length = bytes.length;
-				f.writeInt(length);
-				f.write(bytes);
+			for (int i = 0; i < file.getReplicas().size(); i++) {
+				TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+				m.setMessageType(TFSMessage.mType.SIZEDAPPEND);
+				m.setDestination(file.getReplicas().get(i));
+				m.setFileID(file.getId());
+				m.setBytes(bytes);
+				switchboard.addOutgoingMessage(m);
+				synchronized(lock) {
+					try {
+						waitingIP = file.getReplicas().get(i);
+						wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			if (!killProcess) {
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 				//client.complete();
 				return true;
 			}
-			catch (IOException e) {
-				e.printStackTrace();
+			else {
+				killProcess = false;
+				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+				//client.error();
+				return false;
 			}
 		}
-		//client.error();
-		return false;
 		}
 	}
 	
@@ -1072,23 +1092,34 @@ public class TFSMaster implements Runnable {
 			return false;
 		}
 		else {
-			long id = file.getId();
-			try {
-				File jfile = new File("local/" + id);
-				RandomAccessFile f = new RandomAccessFile(jfile,"rw");
-				f.seek(0);
-				f.skipBytes((int)f.length());
-				f.write(bytes);
+			for (int i = 0; i < file.getReplicas().size(); i++) {
+				TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+				m.setMessageType(TFSMessage.mType.APPEND);
+				m.setDestination(file.getReplicas().get(i));
+				m.setFileID(file.getId());
+				m.setBytes(bytes);
+				switchboard.addOutgoingMessage(m);
+				synchronized(lock) {
+					try {
+						waitingIP = file.getReplicas().get(i);
+						wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			if (!killProcess) {
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 				//client.complete();
 				return true;
 			}
-			catch (IOException e) {
-				e.printStackTrace();
+			else {
+				killProcess = false;
+				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+				//client.error();
+				return false;
 			}
 		}
-		//client.error();
-		return false;
 		}
 	}
 	
@@ -1115,6 +1146,16 @@ public class TFSMaster implements Runnable {
 			return null;
 		}
 		else {
+			/*
+			synchronized(lock) {
+				try {
+					waitingIP = IP;
+					wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			*/
 			long id = file.getId();
 			try {
 				File jfile = new File("local/" + id);
@@ -1158,6 +1199,16 @@ public class TFSMaster implements Runnable {
 			return -1;
 		}
 		else {
+			/*
+			synchronized(lock) {
+				try {
+					waitingIP = IP;
+					wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			*/
 			long id = file.getId();
 			try {
 				File jfile = new File("local/" + id);

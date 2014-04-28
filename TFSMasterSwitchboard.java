@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.*;
 
 
 public class TFSMasterSwitchboard implements Runnable{
@@ -71,7 +72,7 @@ public class TFSMasterSwitchboard implements Runnable{
 		Thread thread3 = new Thread(m2);
 		thread2.start();
 		thread3.start();
-		timer.scheduleAtFixedRate(new TimerTask() {
+		/*timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
 	        	for (int i = 0; i < chunkServers.size(); i++) {
 	        		heartbeatMessage.setDestination(chunkServers.get(i));
@@ -80,18 +81,20 @@ public class TFSMasterSwitchboard implements Runnable{
 	        		}
 	        		System.out.println("Heartbeat sent");
 	        	}
-	        	responses.clear();
+	        	/*responses.clear();
 	        	timer2.schedule(new TimerTask() {
 	    	        public void run() {
-	    	           for (int i = 0; i < chunkServers.size(); i++) {
+	    	           /*for (int i = 0; i < chunkServers.size(); i++) {
 	    	        	   if (responses.indexOf(chunkServers.get(i)) == -1) {
 	    	        		   chunkServers.remove(i);
 	    	        	   }
 	    	           }
+					   System.out.println(chunkServers.size());
+					   System.out.println("responses tallied");
 	    	        }
-	    	    }, 0, 30000);
+	    	    }, 0, 60000);
 	        }
-	    }, 0, 60000);
+	    }, 5000, 30000);*/
 		
 	}
 	
@@ -123,15 +126,30 @@ public class TFSMasterSwitchboard implements Runnable{
 				return;
 		}
 	}
-	
+	private long lastHeartBeat = 0;
 	private void scheduler() {
 		try {
-			System.out.println("schedule" + outgoingMessages.size());
+			System.out.println("schedule " + outgoingMessages.size());
+			long start = System.nanoTime();
 			if (!outgoingMessages.isEmpty()) {
-				System.out.println("calling");
+				System.out.println("sending message");
 				sendTraffic(outgoingMessages.remove(0));
 			}
-			else {
+			else {	
+				long end = System.nanoTime();
+				long elapsed = end - lastHeartBeat;
+				double seconds = (double)elapsed / 1000000000.0;
+				System.out.println(seconds);
+				if (seconds  > 5){
+					lastHeartBeat = end;
+					for (int i = 0; i < chunkServers.size(); i++) {
+						heartbeatMessage.setDestination(chunkServers.get(i));
+						synchronized (outgoingMessages) {
+							outgoingMessages.add(heartbeatMessage);
+						}
+						System.out.println("Heartbeat sent");
+					}
+				}
 				incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
 				if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
 					System.out.println("Parsing message");
@@ -161,7 +179,7 @@ public class TFSMasterSwitchboard implements Runnable{
                 new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
         ) {
 			current.sendMessage(out);
-			messageSocket.close();
+			//messageSocket.close();
         } catch (UnknownHostException e) {
             System.err.println("Error: Don't know about host " + current.getDestination());
             System.exit(1);
@@ -191,7 +209,7 @@ public class TFSMasterSwitchboard implements Runnable{
 				System.out.println("Received a message");
 				q.add(incomingMessage);
 			} 
-			clientSocket.close();
+			//clientSocket.close();
 			/*
 			//Might make more sense to have an outgoingMessages Queue, and to send the Outgoing message with the proper flag set right after you read
 			TFSMessage current = outgoingMessages.remove(0);
@@ -213,8 +231,10 @@ public class TFSMasterSwitchboard implements Runnable{
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
 		TFSMessage.mType type = m.getMessageType();
+		System.out.println(m.getMessageType().toString() + " " + m.getSourceType().toString());
 		if (type == TFSMessage.mType.HANDSHAKE && m.getSourceType() == TFSMessage.Type.CHUNK){
 			chunkServers.add(m.getSource());
+			System.out.println(chunkServers.size());
 		}
 		else if (type == TFSMessage.mType.HANDSHAKE && m.getSourceType() == TFSMessage.Type.CLIENT){
 			clients.add(m.getSource());

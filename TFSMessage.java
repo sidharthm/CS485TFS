@@ -66,10 +66,10 @@ public class TFSMessage implements Serializable{
 				if (sourceType == Type.CLIENT) {
 					out.writeObject(path);
 					out.writeObject(fileName);
-					out.writeObject(replicas);
+					out.writeInt(replicas);
 				}
 				else if (sourceType == Type.MASTER) {
-					out.writeObject(fileID);
+					out.writeLong(fileID);
 				}
 				break;
 			case DELETE:
@@ -78,14 +78,14 @@ public class TFSMessage implements Serializable{
 					out.writeObject(fileName);
 				}
 				else if (sourceType == Type.MASTER) {
-					out.writeObject(fileID);
+					out.writeLong(fileID);
 				}
 				break;
 			case SEEK:
 				if (sourceType == Type.CLIENT) {
 					out.writeObject(fileName);
 					out.writeObject(path);
-					out.writeObject(seekOffset);
+					out.writeInt(seekOffset);
 					out.writeObject(raw_data);
 				}
 				else if (sourceType == Type.MASTER) {
@@ -101,7 +101,7 @@ public class TFSMessage implements Serializable{
 					out.writeObject(raw_data);
 				}
 				else if (sourceType == Type.MASTER) {
-					out.writeObject(fileID);
+					out.writeLong(fileID);
 					out.writeObject(raw_data);
 				}
 				break;
@@ -112,7 +112,7 @@ public class TFSMessage implements Serializable{
 					out.writeObject(raw_data);
 				}
 				else if (sourceType == Type.MASTER) {
-					out.writeObject(fileID);
+					out.writeLong(fileID);
 					out.writeObject(raw_data);
 				}
 				//out.writeObject(path);
@@ -140,8 +140,8 @@ public class TFSMessage implements Serializable{
 			case RECURSIVECREATE:
 				out.writeObject(fileName);
 				out.writeObject(path);
-				out.writeObject(replicas);
-				out.writeObject(numFiles);
+				out.writeInt(replicas);
+				out.writeInt(numFiles);
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
 				//Check Test 3
@@ -162,38 +162,98 @@ public class TFSMessage implements Serializable{
 		messageSource = (String)in.readObject();
 		sourceType = (Type)in.readObject();
 		messageType = (mType)in.readObject();
-		
 		switch (messageType){
 			case CREATEDIRECTORY:
-			case CREATEFILE:
-				path = (String[])in.readObject();
 				fileName = (String)in.readObject();
+				path = (String[])in.readObject();
+				break;
+			case CREATEFILE:
+				if (sourceType == Type.CLIENT) {
+					path = (String[])in.readObject();
+					fileName = (String)in.readObject();
+					replicas = (int)in.readInt();
+				}
+				else if (sourceType == Type.MASTER) {
+					fileID = (long)in.readLong();
+				}
 				break;
 			case DELETE:
-				path = (String[])in.readObject();
+				if (sourceType == Type.CLIENT) {
+					path = (String[])in.readObject();
+					fileName = (String)in.readObject();
+				}
+				else if (sourceType == Type.MASTER) {
+					fileID = (long)in.readLong();
+				}
 				break;
 			case SEEK:
-				path = (String[])in.readObject();
-				seekOffset = (int)in.readObject();
-				raw_data = (byte[])in.readObject();
+				if (sourceType == Type.CLIENT) {
+					fileName = (String)in.readObject();
+					path = (String[])in.readObject();
+					seekOffset = (int)in.readInt();
+					raw_data = (byte[])in.readObject();
+				}
+				else if (sourceType == Type.MASTER) {
+					path = (String[])in.readObject();
+					seekOffset = in.readInt();
+					raw_data = (byte[])in.readObject();
+				}
 				break;
 			case SIZEDAPPEND:
-				//Where is append with size?
+				if (sourceType == Type.CLIENT) {
+					path = (String[])in.readObject();
+					fileName = (String)in.readObject();
+					raw_data = (byte[])in.readObject();
+				}
+				else if (sourceType == Type.MASTER) {
+					fileID = in.readLong();
+					raw_data = (byte[])in.readObject();
+				}
+				break;
 			case APPEND:
-				path = (String[])in.readObject();
-				raw_data = (byte[])in.readObject();
+				if (sourceType == Type.CLIENT) {
+					path = (String[])in.readObject();
+					fileName = (String)in.readObject();
+					raw_data = (byte[])in.readObject();
+				}
+				else if (sourceType == Type.MASTER) {
+					fileID = in.readLong();
+					raw_data = (byte[])in.readObject();
+				}
+				//in.readObject(path);
+				//in.readObject(raw_data);
 				break;
 			case READFILE:
-				path = (String[])in.readObject();
-				fileName = (String)in.readObject();
-				raw_data = (byte[])in.readObject();
+				if (sourceType == Type.CLIENT) {
+					path = (String[])in.readObject();
+					fileName = (String)in.readObject();
+					raw_data = (byte[])in.readObject();
+				}
+				else if (sourceType == Type.MASTER) {
+					
+				}
 				break;
 			case COUNTFILES:
-			case RECURSIVECREATE:
+				if (sourceType == Type.CLIENT) {
+					path = (String[])in.readObject();
+					fileName = (String)in.readObject();
+				}
+				else if (sourceType == Type.MASTER) {
+					
+				}
 				break;
+			case RECURSIVECREATE:
+				fileName = (String)in.readObject();
+				path = (String[])in.readObject();
+				replicas = in.readInt();
+				numFiles = in.readInt();
+				break;
+			/*SUCCESS,ERROR,CREATEREPLICA*/
+				//Check Test 3
 			case CREATEREPLICA:
 				break;
 			case SUCCESS:
+				break;
 			case ERROR:
 				break;
 		}

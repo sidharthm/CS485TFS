@@ -12,6 +12,9 @@ public class TFSChunkServer implements Runnable{
 	private TFSMessage outgoingMessage; 
 	private int nextAvailableHandle = 0;
 	
+	/**Constructor for TFSChunkServer
+	* @param instance of TFSChunkThreading
+	*/
 	public TFSChunkServer(TFSChunkThreading c) {
 		/*Set up all messages with the appropriate initialization*/
 		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
@@ -28,12 +31,20 @@ public class TFSChunkServer implements Runnable{
 		// return mapHandleFile.size();
 	// }
 	
+	/**Infinite while loop
+	* to check if there is anything to do
+	*/
 	public void run() {
 		while (true) {
 			scheduler();
 		}
 	}
 	
+	/**Scheduler
+	* similar to agent scheduler
+	* just keeps checking if there
+	* is anything to do
+	**/
 	public void scheduler() {
 		if (incomingMessages.size() > 0) {
 			TFSMessage t;
@@ -84,11 +95,10 @@ public class TFSChunkServer implements Runnable{
 				break;
 			
 			//DON'T THINK NEED THIS CAUSE MASTER SENDS CREATEFILE FOR REPLICAS TOO.
-			case CREATEREPLICA:
+			//case CREATEREPLICA:
 				//NOT SURE ABOUT PARAMETERS
-				createReplica();
-				
-				break;
+				//createReplica();
+				//break;
 			
 			//DON'T THINK CHUNKSERVER WOULD NEED THIS
 			// case SUCCESS:
@@ -119,7 +129,10 @@ public class TFSChunkServer implements Runnable{
 	}
 **/
 
-	
+	/**For creating files
+	* @param sender (String), fileHandle (long), fileName (String)
+	* for creating file request from server
+	*/
 	//Create File request from Server to setup file handle and file name
 	private void createFile(String sender, long fileHandle, String fileName) {	
 		String newLocation = location + fileName;
@@ -160,7 +173,12 @@ public class TFSChunkServer implements Runnable{
 		outgoingMessage.setDestination(sender);
 		send(outgoingMessage);
 	}
-		
+	
+	/**For creating files 
+	* @param sender(String), fileHandle(long), byteArray
+	* to overwrite empty byte array from master message
+	* coming from client
+	*/	
 	//createFile request from client overwrites just created empty file from server
 	private void createFile(String sender, long fileHandle, byte[] b) {
 		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
@@ -206,6 +224,10 @@ public class TFSChunkServer implements Runnable{
 		}}
 	}
 	
+	/** For deleting files
+	* @param sender(String), fileHandle(long)
+	* deletes file from all maps and memory
+	*/
 	//For deleting files in the chunkServer map and in the folder
 	private void deleteFile(String sender, long fileHandle) {
 		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
@@ -232,6 +254,9 @@ public class TFSChunkServer implements Runnable{
 		}}
 	}	
 	
+	/** Heartbeat response to master
+	* @param sender(String) - master IP
+	*/
 	private void heartbeatResponse(String sender) {
 		//Setting up outgoing message
 		outgoingMessage.setMessageType(TFSMessage.mType.HEARTBEATRESPONSE);
@@ -239,6 +264,9 @@ public class TFSChunkServer implements Runnable{
 		send(outgoingMessage);
 	}
 	
+	/** readFile request from the client
+	@param sender(String) - client, fileHandle(long)
+	*/
 	private void readFile(String sender, long fileHandle) {
 		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
 			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
@@ -262,6 +290,10 @@ public class TFSChunkServer implements Runnable{
 		}}
 	}
 	
+	/**For atomic append - seekAndWrite
+	*@param sender(String), offset(int), fileHandle(long), byteArray
+	*very similar implementation to append just inserted in the middle
+	*/
 	private void seekAndWrite(String sender, int offset, long fileHandle, byte[] b) {
 		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
 			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
@@ -286,6 +318,9 @@ public class TFSChunkServer implements Runnable{
 		}}
 	}
 	
+	/**sizedAppend - appending to a file including the size of the added file
+	* @param sender(String), fileHandle(long), byteArray
+	*/
 	//Appending to a file with the initial 4 bit size
 	private void sizedAppend(String sender, long fileHandle, byte[] b) {
 		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
@@ -315,6 +350,10 @@ public class TFSChunkServer implements Runnable{
 		}}
 	}
 	
+	/*Simple append
+	* @param sender(String), fileHandle(long), byteArray
+	* adds a file to the end of a specific file
+	*/
 	//Simple append
 	private void append(String sender, long fileHandle, byte[] b) {
 		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
@@ -342,6 +381,9 @@ public class TFSChunkServer implements Runnable{
 		}}
 	}
 	
+	/**Sends the number of files in a chunk
+	* @param sender(String), fileHandle(long)
+	*/
 	//Sends the number of files in a chunk
 	private void countFiles(String sender, long fileHandle) {
 		int count = 0;
@@ -381,19 +423,18 @@ public class TFSChunkServer implements Runnable{
 		}}
 	}
 
+/**
 	//Not really needed because replicas are createFile messages
 	private void createReplica() {
 	
 	}
-	
-	/**private void success() {
+	private void success() {
 		//HONESTLY, I DON'T THINK CHUNKSERVER WOULD NEED TO KNOW SUCCESS OR SOMETHING
 	}
-	
 	private void error() {
 		//HONESTLY, I DON'T THINK CHUNKSERVER WOULD NEED TO KNOW SUCCESS OR SOMETHING
-	}**/
-/**
+	}
+
 	private void send(String senderIP) {
 		try (
             Socket messageSocket = new Socket(senderIP, portNumber);
@@ -411,15 +452,25 @@ public class TFSChunkServer implements Runnable{
         }
 	}	
 **/
+
+	/**adding to the messages incoming - not really used
+	* @param Message
+	*/
 	public void addMessage(TFSMessage m) {
 		incomingMessages.add(m);
 	}
 	
+	/**adds messages to the outgoing queue in TFSChunkThreading - send
+	* @param Message
+	*/
 	public void send(TFSMessage m) {
 		chunkThread.addOutgoingMessage(m);
 	}
 
-	
+	/**Retrieving files in local directory(folder)
+	* since working with persistent data, any file saved by
+	* client in TFS is stored in local memory of chunkServer
+	*/
 	//Retrieve Files
 	private void retrieveFiles() {
 		/** 
@@ -453,17 +504,3 @@ public class TFSChunkServer implements Runnable{
 		}
 	}
 }
-	
-	
-//Look for HACK AND WEIRD AND WAIT if checking for parts still not sure
-/**
-	
-//NOT YET IMPLEMENTED
-- seekAndWrite
-- sizedAppend()
-- append()
-- createReplica
- 
- chunkServer ID might need to be randomize
-
-**/

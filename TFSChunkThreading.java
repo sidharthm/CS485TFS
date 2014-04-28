@@ -27,6 +27,9 @@ public class TFSChunkThreading implements Runnable{
 	String hostName;
 	int portNumber = 4444; //Default unless in stated in the config fle
 	
+	/**Constructor for TFSChunkThreading
+	* sets up all config files
+	*/
 	public TFSChunkThreading() {
 		setUpChunk();
 		
@@ -37,6 +40,10 @@ public class TFSChunkThreading implements Runnable{
 		thread2.start();
 	}
 	
+	/**Setting up the chunk - setUpChunk
+	* reads from config files
+	* initiates handshake
+	*/
 	private void setUpChunk() {
 		/** All initialization for the chunk should be done here **/
 		System.out.println("Welcome to TFS ChunkServer");
@@ -98,51 +105,88 @@ public class TFSChunkThreading implements Runnable{
 		System.out.println("Initialization of ChunkServer is complete");
 	}
 	
-		
+	/**getOutgoingMessage
+	* returns a list of outgoing message
+	*/
 	public List<TFSMessage> getOutgoingMessages() {
 		return outgoingMessages;
 	}
 	
+	/**addOutgoingMessage
+	* @param Message
+	* adds message to be sent
+	*/
 	public void addOutgoingMessage(TFSMessage m) {
 		synchronized(outgoingMessages) {
 			outgoingMessages.add(m);
 		}
 	}
 	
+	/**infinite while loop
+	*/
 	public void run() {
 		while(true) {
 			scheduler();
 		}
 	}
 	
+	/**getLocation
+	* returns the local folder directory
+	* for chunkServer
+	*/
 	public String getLocation() {
 		return location;
 	}
 	
+	/**getPathMap
+	* returns the Handle to file Name map
+	*/
 	public Map getPathMap() {
 		return mapHandlePath;
 	}
 	
+	/**getFileMap
+	* returns the Handle to byteArray map
+	*/
 	public Map getFileMap() {
 		return mapHandleFile;
 	}
 	
+	/**addFileToMap
+	* @param fileHandle(long), byteArray
+	* adds to map
+	*/
 	public void addFileToMap(long fileHandle, byte[] b) {
 		mapHandleFile.put(fileHandle, b);
 	}
 	
+	/**addPathToMap
+	* @param fileHandle(long), fileName(String)
+	* adds to map
+	*/
 	public void addPathToMap(long fileHandle, String fileName) {
 		mapHandlePath.put(fileHandle,fileName);
 	}
 	
+	/**deletePathInMap
+	* @param fileHandle(long)
+	* removes key and value in map
+	*/
 	public void deletePathInMap(long fileHandle) {
 		mapHandlePath.remove(fileHandle);
 	}
 	
+	/**deleteFileInMap
+	* @param fileHadle(long)
+	*removes key and value in map
+	*/
 	public void deleteFileInMap(long fileHandle) {
 		mapHandleFile.remove(fileHandle);
 	}
 	
+	/**scheduler - checks if there is anything the
+	* chunkserver can do
+	*/
 	private void scheduler() {
 		try {
 			if (!outgoingMessages.isEmpty()) {
@@ -167,6 +211,10 @@ public class TFSChunkThreading implements Runnable{
 		}
 	}
 	
+	/**sendTraffic
+	* @param Message
+	* method to send message
+	*/
 	private void sendTraffic(TFSMessage current){
 		try (
             Socket messageSocket = new Socket(current.getDestination(), portNumber);
@@ -184,11 +232,19 @@ public class TFSChunkThreading implements Runnable{
         } 
 	}
 
+	/**clears all elements of the message
+	* @param Message
+	* not really used
+	*/
 	private TFSMessage resetMessage(TFSMessage m){
 		//change all parameters besides messageSource and sourceType to null types 
 		return m;
 	}
 	
+	/**Waiting if there are any
+	* possible incoming messages
+	* @param list of incoming messages
+	*/
 	private List<TFSMessage> listenForTraffic(List<TFSMessage> q) throws ClassNotFoundException{
 		try (
 			ServerSocket serverSocket =
@@ -221,6 +277,9 @@ public class TFSChunkThreading implements Runnable{
         return q;
 	}
 	
+	/** parse the message
+	* @param Message
+	*/
 	private void parseMessage(TFSMessage m){
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
@@ -229,6 +288,7 @@ public class TFSChunkThreading implements Runnable{
 		mPrime.addMessage(m);
 	}
 	
+	/**Main**/
 	public static void main(String[] args) {
 		TFSChunkThreading cThread = new TFSChunkThreading();
 		Thread thread = new Thread(cThread);

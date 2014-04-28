@@ -1207,13 +1207,13 @@ public class TFSMaster implements Runnable {
 			if (!killProcess) {
 				removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
 				//client.complete();
-				return true;
+				//return true;
 			}
 			else {
 				killProcess = false;
 				removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
 				//client.error();
-				return false;
+				//return false;
 			}
 		}
 		//client.error();
@@ -1281,6 +1281,7 @@ public class TFSMaster implements Runnable {
 				return false;
 			}
 		}
+	}
 	}
 	
 	/**

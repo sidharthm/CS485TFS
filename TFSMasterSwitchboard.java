@@ -59,6 +59,11 @@ public class TFSMasterSwitchboard implements Runnable{
 	            //TODO send heartbeat
 	        }
 	    }, 0, 60000);
+		
+		Thread thread2 = new Thread(mPrime);
+		Thread thread3 = new Thread(m2);
+		thread2.start();
+		thread3.start();
 	}
 	
 	public TFSNode getRoot() {
@@ -176,5 +181,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	
 	public static void main(String[] args) {
 		TFSMasterSwitchboard testBoard = new TFSMasterSwitchboard();
+		Thread thread = new Thread(testBoard);
+		thread.start();
 	}
 }

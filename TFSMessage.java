@@ -59,39 +59,100 @@ public class TFSMessage implements Serializable{
 		out.writeObject(messageType);
 		switch (messageType){
 			case CREATEDIRECTORY:
-			case CREATEFILE:
-				out.writeObject(path);
 				out.writeObject(fileName);
+				out.writeObject(path);
+				break;
+			case CREATEFILE:
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(path);
+					out.writeObject(fileName);
+					out.writeObject(replicas);
+				}
+				else if (sourceType == Type.MASTER) {
+					out.writeObject(fileID);
+				}
 				break;
 			case DELETE:
-				out.writeObject(path);
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(path);
+					out.writeObject(fileName);
+				}
+				else if (sourceType == Type.MASTER) {
+					out.writeObject(fileID);
+				}
 				break;
 			case SEEK:
-				out.writeObject(path);
-				out.writeInt(seekOffset);
-				out.writeObject(raw_data);
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(fileName);
+					out.writeObject(path);
+					out.writeObject(seekOffset);
+					out.writeObject(raw_data);
+				}
+				else if (sourceType == Type.MASTER) {
+					out.writeObject(path);
+					out.writeInt(seekOffset);
+					out.writeObject(raw_data);
+				}
 				break;
 			case SIZEDAPPEND:
-				//Where is append with size?
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(path);
+					out.writeObject(fileName);
+					out.writeObject(raw_data);
+				}
+				else if (sourceType == Type.MASTER) {
+					out.writeObject(fileID);
+					out.writeObject(raw_data);
+				}
+				break;
 			case APPEND:
-				out.writeObject(path);
-				out.writeObject(raw_data);
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(path);
+					out.writeObject(fileName);
+					out.writeObject(raw_data);
+				}
+				else if (sourceType == Type.MASTER) {
+					out.writeObject(fileID);
+					out.writeObject(raw_data);
+				}
+				//out.writeObject(path);
+				//out.writeObject(raw_data);
 				break;
 			case READFILE:
-				out.writeObject(path);
-				out.writeObject(fileName);
-				out.writeObject(raw_data);
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(path);
+					out.writeObject(fileName);
+					out.writeObject(raw_data);
+				}
+				else if (sourceType == Type.MASTER) {
+					
+				}
 				break;
 			case COUNTFILES:
 			case NUMFILES:
 				out.writeInt(numFiles);
+
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(path);
+					out.writeObject(fileName);
+				}
+				else if (sourceType == Type.MASTER) {
+					
+				}
+				break;
+
 			case RECURSIVECREATE:
+				out.writeObject(fileName);
+				out.writeObject(path);
+				out.writeObject(replicas);
+				out.writeObject(numFiles);
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
 				//Check Test 3
 			case CREATEREPLICA:
 				break;
 			case SUCCESS:
+				break;
 			case ERROR:
 				break;
 		}

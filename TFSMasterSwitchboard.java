@@ -49,6 +49,7 @@ public class TFSMasterSwitchboard implements Runnable{
 			System.exit(1);
 		}
 		masters = new ArrayList<TFSMaster>();
+		clients = new ArrayList<String>();
 		outgoingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
 		//outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);

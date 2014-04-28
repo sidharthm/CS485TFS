@@ -13,7 +13,7 @@ public class TFSMaster implements Runnable {
 	/**
 	 * The TFS client
 	 */
-	TFSClient client;
+	//TFSClient client;
 	/**
 	 * The log file we write all file structure changes to
 	 */
@@ -51,7 +51,7 @@ public class TFSMaster implements Runnable {
 		//Create the root. Not a file, has no parent, id of -1 (because all time stamps are positive, so
 		//new files and directories will have positive IDs), and a name of root
 		//root = new TFSNode(false,null,-1,"root");
-		client = c;
+		//client = c;
 	}
 	
 	public void run() {
@@ -98,9 +98,6 @@ public class TFSMaster implements Runnable {
 				String[] p1 = message.getPath();
 				int replicas = message.getReplicaNum();
 				createFileNoID(p1,p2,true,true,replicas);
-			}
-			else if (type == TFSMessage.mType.CREATEREPLICA) {
-				
 			}
 			else if (type == TFSMessage.mType.DELETE) {
 				String p2 = message.getFileName();
@@ -546,8 +543,8 @@ public class TFSMaster implements Runnable {
 		synchronized(directory) {
 		if (directory == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			if (error)
-				client.error();
+			//if (error)
+				//client.error();
 			return false;
 		}
 		else if (directory == null && errorType == ErrorType.LOCKING) {
@@ -556,8 +553,8 @@ public class TFSMaster implements Runnable {
 		}
 		else if (directory.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a directory.");
-			if (error)
-				client.error();
+			//if (error)
+				//client.error();
 			return false;
 		}
 		else {
@@ -591,7 +588,7 @@ public class TFSMaster implements Runnable {
 						if (write)
 							writeLogEntry("createFileID",path,name,id,replicas);
 						removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-						client.complete();
+						//client.complete();
 						return true;
 					}
 					catch (Exception e) {
@@ -603,8 +600,8 @@ public class TFSMaster implements Runnable {
 					killProcess = false;
 				}
 			}
-			if (error)
-				client.error();
+			//if (error)
+				//client.error();
 			return false;
 		}
 		}
@@ -622,7 +619,7 @@ public class TFSMaster implements Runnable {
 		synchronized(directory) {
 		if (directory == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, directory does not exist.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else if (directory == null && errorType == ErrorType.LOCKING) {
@@ -631,7 +628,7 @@ public class TFSMaster implements Runnable {
 		}
 		else if (directory.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a directory.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else {
@@ -648,10 +645,10 @@ public class TFSMaster implements Runnable {
 				if (write)
 					writeLogEntry("createDirectory",path,name,-1,-1);
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-				client.complete();
+				//client.complete();
 				return true;
 			}
-			client.error();
+			//client.error();
 			return false;
 		}
 		}
@@ -808,7 +805,7 @@ public class TFSMaster implements Runnable {
 		synchronized(file) {
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
@@ -817,14 +814,14 @@ public class TFSMaster implements Runnable {
 		}
 		else if (file.getIsFile()) {
 			System.out.println("Master: Error, not a directory.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else {
 			recursiveCreateFile(path, file, write, num, replicas);
 			//if (write)
 				//writeLogEntry("recursiveCreate",path,null,(long)num);
-			client.complete();
+			//client.complete();
 			return true;
 		}
 		}
@@ -835,7 +832,7 @@ public class TFSMaster implements Runnable {
 		synchronized(file) {
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
@@ -846,7 +843,7 @@ public class TFSMaster implements Runnable {
 			recursiveDeleteFile(path, file, write);
 			//if (write)
 				//writeLogEntry("recursiveCreate",path,null,(long)num);
-			client.complete();
+			//client.complete();
 			return true;
 		}
 		}
@@ -960,7 +957,7 @@ public class TFSMaster implements Runnable {
 		synchronized(file) {
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
@@ -969,7 +966,7 @@ public class TFSMaster implements Runnable {
 		}
 		else if (!file.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a file.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else {
@@ -981,13 +978,13 @@ public class TFSMaster implements Runnable {
 				f.write(bytes);
 				f.close();
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-				client.complete();
+				//client.complete();
 				return true;
 			}
 			catch (IOException e) {
 				e.printStackTrace();
 			}
-			client.error();
+			//client.error();
 			return false;
 		}
 		}
@@ -1004,7 +1001,7 @@ public class TFSMaster implements Runnable {
 		synchronized(file) {
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
@@ -1013,7 +1010,7 @@ public class TFSMaster implements Runnable {
 		}
 		else if (!file.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a file.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else {
@@ -1027,14 +1024,14 @@ public class TFSMaster implements Runnable {
 				f.writeInt(length);
 				f.write(bytes);
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-				client.complete();
+				//client.complete();
 				return true;
 			}
 			catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
-		client.error();
+		//client.error();
 		return false;
 		}
 	}
@@ -1050,7 +1047,7 @@ public class TFSMaster implements Runnable {
 		synchronized(file) {
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
@@ -1059,7 +1056,7 @@ public class TFSMaster implements Runnable {
 		}
 		else if (!file.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a file.");
-			client.error();
+			//client.error();
 			return false;
 		}
 		else {
@@ -1071,14 +1068,14 @@ public class TFSMaster implements Runnable {
 				f.skipBytes((int)f.length());
 				f.write(bytes);
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-				client.complete();
+				//client.complete();
 				return true;
 			}
 			catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
-		client.error();
+		//client.error();
 		return false;
 		}
 	}
@@ -1093,7 +1090,7 @@ public class TFSMaster implements Runnable {
 		synchronized(file) {
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			//client.error();
 			return null;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
@@ -1102,7 +1099,7 @@ public class TFSMaster implements Runnable {
 		}
 		else if (!file.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a file.");
-			client.error();
+			//client.error();
 			return null;
 		}
 		else {
@@ -1113,14 +1110,14 @@ public class TFSMaster implements Runnable {
 				byte[] b = new byte[(int)f.length()];
 				f.read(b);
 				removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
-				client.complete();
+				//client.complete();
 				return b;
 			}
 			catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
-		client.error();
+		//client.error();
 		return null;
 		}
 	}
@@ -1136,7 +1133,7 @@ public class TFSMaster implements Runnable {
 		int count = 0;
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
-			client.error();
+			//client.error();
 			return -1;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
@@ -1145,7 +1142,7 @@ public class TFSMaster implements Runnable {
 		}
 		else if (!file.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a file.");
-			client.error();
+			//client.error();
 			return -1;
 		}
 		else {
@@ -1166,7 +1163,7 @@ public class TFSMaster implements Runnable {
 			}
 		}
 		removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
-		client.complete();
+		//client.complete();
 		return count;
 		}
 	}

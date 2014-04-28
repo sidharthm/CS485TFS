@@ -16,6 +16,7 @@ public class TFSMessage implements Serializable{
 	String errorMessage;
 	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE,INITIALIZE,PRINT};
 	private mType messageType;
+	int replicas;
 
 	public TFSMessage(){
 		/*Null constructor for receiving messages*/
@@ -257,5 +258,17 @@ public class TFSMessage implements Serializable{
 	 */
 	public void setFileNum(int r) {
 		recursiveCreateNum = r;
+	}
+	/**
+	 * Getter for replica number for createFile
+	*/
+	public int getReplicaNum() {
+		return replicas;
+	}
+	/**
+	 * Setter for replica number for createFile
+	*/
+	public void setReplicaNum(int r) {
+		replicas = r;
 	}
 }

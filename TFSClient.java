@@ -152,7 +152,7 @@ public class TFSClient{
 				unitThree();
 		}
 		else if(commands[0].equalsIgnoreCase("Unit4")){
-			if(commands.length == 3)
+			if(commands.length == 4)
 				unitFour();
 		}
 		else if(commands[0].equalsIgnoreCase("Unit5")){
@@ -166,10 +166,6 @@ public class TFSClient{
 		else if(commands[0].equalsIgnoreCase("Unit7")){
 			if(commands.length == 2)
 				unitSeven();
-		}
-		else if(commands[0].equalsIgnoreCase("Unit8")){
-			if(commands.length == 3)
-				unitEight();
 		}
 		else if (commands[0].equals("?")){
 			System.out.println("    Test1 <number of directories> - create directories");
@@ -278,10 +274,16 @@ public class TFSClient{
 	private void unitFour(){
 		String[] path = commands[2].split("/");
 		String[] p = new String[path.length-1];
+		int replicas = Integer.parseInt(commands[3]);
 		for (int i = 0; i < p.length; i++) {
 			p[i] = path[i];
 		}
 		//if (master.createFileNoID(p,path[path.length-1],true,true)) {//HERE
+		outgoingMessage.setMessageType(TFSMessage.mType.CREATEFILE);
+		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(p[p.length-1]);
+		outgoingMessage.setReplicaNum(replicas);
+		sendMessageToMaster();
 			File file = new File(commands[1]);
 			try {
 				RandomAccessFile f = new RandomAccessFile(file, "r");
@@ -315,6 +317,7 @@ public class TFSClient{
 		//byte[] b = master.readFileNoSize(d);//HERE
 		outgoingMessage.setMessageType(TFSMessage.mType.READFILE);
 		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(path[path.length-1]);
 		/*if(!Error) {
 			try {
 				File f = new File(commands[2]);
@@ -347,6 +350,9 @@ public class TFSClient{
 		outgoingMessage.setMessageType(TFSMessage.mType.CREATEFILE);
 		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(p[p.length-1]);
+		outgoingMessage.setReplicaNum(3);
+		sendMessageToMaster();
+			try { Thread.sleep(1000); } catch(InterruptedException e) {}
 		File file = new File(commands[1]);
 		try {
 			RandomAccessFile f = new RandomAccessFile(file, "r");
@@ -369,16 +375,18 @@ public class TFSClient{
 	 */
 	private void unitSeven(){
 		String[] path = commands[1].split("/");
+		String[] p = new String[path.length-1];
+		for (int i = 0; i < p.length; i++) {
+			p[i] = path[i];
+		}
 		outgoingMessage.setMessageType(TFSMessage.mType.COUNTFILES);
 		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(path[path.length-1]);
 		/*if(master.countFilesInNode(path) > 0) {//HERE
 			System.out.println("Client: " + master.countFilesInNode(path) + " file/s stored in TFS file.");//HERE
 		}*/
 	}
 	
-	private void unitEight(){
-		String[] path = commands[1].split("/");
-	}
 	/**
 	 * Sends append message to master
 	 * Parameters from user input: path (string), file (in bytes)

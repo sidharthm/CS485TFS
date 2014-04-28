@@ -635,6 +635,10 @@ public class TFSClient{
         //} 
 		if(incomingMessage.getMessageType() != TFSMessage.mType.NONE)
 			parseMessage(incomingMessage);
+		else if (incomingMessage.getMessageType() == TFSMessage.mType.ERROR)
+			System.out.println("There was an error");
+		else if (incomingMessage.getMessageType() == TFSMessage.mType.SUCCESS)
+			System.out.println("Transaction Successful");
 		else{
 			System.out.println("Master cannot be reached");
 			console();

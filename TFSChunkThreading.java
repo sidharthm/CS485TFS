@@ -260,6 +260,7 @@ public class TFSChunkThreading implements Runnable{
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
         ) {
 			try { Thread.sleep(1000); } catch(InterruptedException e) {}
+			System.out.println("listening");
 			TFSMessage incomingMessage = new TFSMessage(); //create a new MessageObject, I think we should have the constructor set everything to null when it's initialized
 			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
 				incomingMessage.receiveMessage(in); //call readObject 

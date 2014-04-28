@@ -30,6 +30,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	private TFSNode root;
 	private ArrayList<String> chunkServers;
 	private ArrayList<String> responses;
+	private ArrayList<TFSMaster> masters;
 	Timer timer = new Timer();
 	Timer timer2 = new Timer();
 	
@@ -46,6 +47,7 @@ public class TFSMasterSwitchboard implements Runnable{
 			System.err.println("Error: Configuration file not found");
 			System.exit(1);
 		}
+		masters = new ArrayList<TFSMaster>();
 		outgoingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
 		//outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
@@ -57,10 +59,11 @@ public class TFSMasterSwitchboard implements Runnable{
 		root = new TFSNode(false,null,-1,"root",0);
 		mPrime = new TFSMaster(this,mPrimeLock);
 		m2 = new TFSMaster(this,m2Lock);
+		masters.add(mPrime);
+		masters.add(m2);
 		mPrime.initializeStructure();
 		timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
-	            //TODO send heartbeat
 	        	for (int i = 0; i < chunkServers.size(); i++) {
 	        		heartbeatMessage.setDestination(chunkServers.get(i));
 	        		sendTraffic(heartbeatMessage);
@@ -195,8 +198,32 @@ public class TFSMasterSwitchboard implements Runnable{
 		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {
 			responses.add(m.getSource());
 		}
+		else if (type == TFSMessage.mType.SUCCESS) {
+			notifyThread(m.getSource(),true);
+		}
+		else if (type == TFSMessage.mType.ERROR) {
+			notifyThread(m.getSource(),false);
+		}
 		else {
 			mPrime.addMessage(m);
+		}
+	}
+	
+	private void notifyThread(String IP, boolean success) {
+		for (int i = 0; i < masters.size(); i++) {
+			if (masters.get(i).getIP().equals(IP)) {
+				if (success) {
+					synchronized(masters.get(i).getLock()) {
+						notify();
+					}
+				}
+				else {
+					masters.get(i).setKillProcess(true);
+					synchronized(masters.get(i).getLock()) {
+						notify();
+					}
+				}
+			}
 		}
 	}
 	

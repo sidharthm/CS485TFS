@@ -180,6 +180,18 @@ public class TFSMaster implements Runnable {
 		//return client.root;
 	}
 	
+	public String getIP() {
+		return waitingIP;
+	}
+	
+	public Object getLock() {
+		return lock;
+	}
+	
+	public void setKillProcess(boolean k) {
+		killProcess = k;
+	}
+	
 	public void initializeStructure() {
 		File file = new File("local/");
 		file.mkdirs();

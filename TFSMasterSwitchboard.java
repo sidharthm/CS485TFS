@@ -29,6 +29,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	private List<TFSMessage> incomingMessages; // This Queue will store any incoming messages
 	private TFSNode root;
 	private ArrayList<String> chunkServers;
+	private ArrayList<String> clients;
 	private ArrayList<String> responses;
 	private ArrayList<TFSMaster> masters;
 	Timer timer = new Timer();
@@ -192,8 +193,11 @@ public class TFSMasterSwitchboard implements Runnable{
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
 		TFSMessage.mType type = m.getMessageType();
-		if (type == TFSMessage.mType.HANDSHAKE){
+		if (type == TFSMessage.mType.HANDSHAKE && m.getSourceType() == TFSMessage.Type.CHUNK){
 			chunkServers.add(m.getSource());
+		}
+		else if (type == TFSMessage.mType.HANDSHAKE && m.getSourceType() == TFSMessage.Type.CLIENT){
+			clients.add(m.getSource());
 		}
 		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {
 			responses.add(m.getSource());

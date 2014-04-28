@@ -8,6 +8,8 @@ import java.util.Scanner;
 public class TFSClient{
 	TFSMaster master;
 	String input=null;
+	int dir;
+	int sub;
 	String[] commands=null;
 	String location="C: ";
 	String chunk_ID=null;
@@ -648,11 +650,11 @@ public class TFSClient{
 	 * Send a request of readfile
 	 * @param string request, bytes b
 	 */
-	private void sendRequest(String request, byte[] b){
+	/*private void sendRequest(String request, byte[] b){
 		outgoingMessage.setMessageType(TFSMessage.mType.READFILE);
 		outgoingMessage.setBytes(b);
 		outgoingMessage.setLocation(request);
-	}
+	}*/
 	/**
 	 * The main
 	 */

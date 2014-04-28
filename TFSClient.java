@@ -30,7 +30,9 @@ public class TFSClient{
 	public TFSClient(){
 		setUpClient();
 	}
-	
+	/**
+	 * Initial setup of the client
+	 */
 	public void setUpClient(){
 		/*This first block gets the master's IP address and loads it into the client*/
 		System.out.println("Welcome to TFS Client");
@@ -78,11 +80,16 @@ public class TFSClient{
 		
 		System.out.println("Initialization of Client complete");
 	}
-	
+	/**
+	 * Sets the master and calls to print out console
+	 */
 	public void setMaster(TFSMaster m) {
 		master = m;
 		console();
 	}
+	/**
+	 * Prints out console and waits for input
+	 */
 	public void console(){
 		/*
 		if(!paths.isEmpty()){
@@ -100,7 +107,9 @@ public class TFSClient{
 		actions();
 		
 	}
-	
+	/**
+	 * Reads input and does called command
+	 */
 	public boolean actions(){
 		commands=input.split(" ");
 		
@@ -182,7 +191,10 @@ public class TFSClient{
 		console();
 		return true;
 	}
-	
+	/**
+	 * Runs the first test: Creates hierarchical directory structure with a specified fanout
+	 * Parameters from user input: two integers for amount of dicectories and subdirectories
+	 */
 	private void unitOne(){
 		int k=1;
 		int mult=1;
@@ -201,36 +213,11 @@ public class TFSClient{
 			String[] path = strings.toArray(new String[strings.size()]);
 			makeDirectory(path);
 		}
-		/*for (int i = 1; i <= directories; i++) {
-			ArrayList<String> strings = new ArrayList<String>();
-			int j = i;
-			while (j >= 1) {
-				strings.add(""+j);
-				j /= 2;
-			}
-			Collections.reverse(strings);
-			String[] path = strings.toArray(new String[strings.size()]);
-			makeDirectory(path);
-		}
-		int i=1;
-		int j;
-		while(i<=testone){
-			j=i;
-			while(j/2>1){
-				directory=directory+(j/2)+"/";
-				j=j/2;
-			}
-			directory=directory+(i);
-			directories.add(directory);
-			directory="1/";
-			i++;
-		}
-		for (int k = 0; k < directories.size(); k++) {
-			makeDirectory(directories.get(0));
-		}
-		*/
 	}
-	
+	/**
+	 * Runs the second test: create N files in a directory and its subdirectories until the leaf subdirectories
+	 * Parameters from user input: a string (path) and the amount of files (integer)
+	 */
 	private void unitTwo(){
 		String[] d=commands[1].split("/");
 		int num = Integer.parseInt(commands[2]);
@@ -240,7 +227,10 @@ public class TFSClient{
 		outgoingMessage.setPath(d);
 		outgoingMessage.setFileName(d[d.length-1]);
 	}
-	
+	/**
+	 * Runs the third test: Delete a hierarchical directory structure including the files in those directories.
+	 * Parameter from user input: a string (path)
+	 */
 	private void unitThree(){
 		String[] delete=commands[1].split("/");
 		String[]path = new String[delete.length-1];
@@ -253,7 +243,10 @@ public class TFSClient{
 		outgoingMessage.setPath(path);
 		//outgoingMessage.setFileName(delete[delete.length-1]);
 	}
-	
+	/**
+	 * Runs the fourth test: Store a file on the local machine in a target TFS file specified by its path.
+	 * Paramater from user input: string (local path), the file (sent in bytes), and number of replicas (integer) 
+	 */
 	private void unitFour(){
 		String[] path = commands[2].split("/");
 		String[] p = new String[path.length-1];
@@ -280,7 +273,10 @@ public class TFSClient{
 		//else
 		//	System.out.println(" File exists in TFS.");
 	}
-	
+	/**
+	 *Runs the fifth test: Read the content of a TFS file and store it on the specified file on the local machine.
+	 *Parameter from user input: string (local path) and file (sent in bytes) 
+	 */
 	private void unitFive(){
 		String[] path = commands[1].split("/");
 		String[] p = new String[path.length-1];
@@ -309,7 +305,10 @@ public class TFSClient{
 		}*/
 		Error = false;
 	}
-	
+	/**
+	 * Runs the sixth test: Append the size and content of a file stored on the local machine in a target TFS file specified by its path.
+	 * Parameters from user input: local file path (string), file (sent in bytes)
+	 */
 	private void unitSix(){
 		String[] path = commands[2].split("/");
 		String[] p = new String[path.length-1];
@@ -336,7 +335,10 @@ public class TFSClient{
 			e.printStackTrace();
 		}
 	}
-	
+	/**
+	 * Runs the seventh test: Count the number of logical files stored in a TFS file using Test6 and printout the results.
+	 * Parameter from user input: path (string)
+	 */
 	private void unitSeven(){
 		String[] path = commands[1].split("/");
 		outgoingMessage.setMessageType(TFSMessage.mType.COUNTFILES);
@@ -349,7 +351,10 @@ public class TFSClient{
 	private void unitEight(){
 		String[] path = commands[1].split("/");
 	}
-	
+	/**
+	 * Sends append message to master
+	 * Parameters from user input: path (string), file (in bytes)
+	 */
 	private void appendFile(){
 		String []d=commands[1].split("/");
 		File file = new File(commands[2]);
@@ -366,7 +371,10 @@ public class TFSClient{
 			e.printStackTrace();
 		}
 	}
-	
+	/**
+	 * Send make directory message to master
+	 * Parameters from user input: path(string)and file name (string)
+	 */
 	private void makeDirectory(){
 		String []d=commands[1].split("/");
 		String[]path = new String[d.length-1];
@@ -379,7 +387,11 @@ public class TFSClient{
 		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
 	}
-	
+	/**
+	 * Send make directory message to master
+	 * Parameters from user input: path(string)and file name (string)
+	 * @param string path
+	 */
 	private void makeDirectory(String[] d) {
 		String[]path = new String[d.length-1];
 		for (int i = 0; i < d.length-1; i++) {
@@ -391,7 +403,11 @@ public class TFSClient{
 		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
 	}
-	
+	/**
+	 * Send make directory message to master
+	 * Parameters from user input: path(string)and file name (string)
+	 * @param string filename
+	 */
 	private void makeDirectory(String name){
 		directories.remove(name);
 		String []d=name.split("/");
@@ -405,7 +421,10 @@ public class TFSClient{
 		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
 	}
-	
+	/**
+	 * Send seek file message to master
+	 * Parameters from user input: path(string), offset, and file (in bytes)
+	 */
 	private void seekFile(){
 		String []d=commands[1].split("/");
 		File file = new File(commands[2]);
@@ -425,7 +444,10 @@ public class TFSClient{
 		}
 		//master.seek(d,this);
 	}
-	
+	/**
+	 * Send delete message to master
+	 * Parameters from user input: path(string)
+	 */
 	private void remove(){
 		String[]d = commands[1].split("/");
 		//master.recursiveDelete(d, true);
@@ -433,7 +455,10 @@ public class TFSClient{
 		outgoingMessage.setPath(d);
 		//master.delete(d, this);
 	}
-	
+	/**
+	 * Send create file message to master
+	 * Parameters from user input: path(string)and file name (string)
+	 */
 	private void createFile(){
 		String[]d=commands[1].split("/");
 		String[]path = new String[d.length-1];
@@ -454,29 +479,50 @@ public class TFSClient{
 	public void hereIsData(String File){
 		
 	}
-	
+	/**
+	 * Message that directory made was successful
+	 * Prints out console again
+	 */
 	public void DirectoryMade(){
 		System.out.println("Directory Made");
 		console();
 	}
+	/**
+	 * Message that directory deleted was successful
+	 * Prints out console again
+	 */
 	public void DirectoryDeleted() {
 		System.out.println("Directory Deleted");
 		console();
 	}
+	/**
+	 * Message that files added was successful
+	 * Prints out console again
+	 */
 	public void FilesAdded() {
 		System.out.println("Files Added");
 		console();
 	}
-	
+	/**
+	 * Message that there was an error
+	 * Prints out console again
+	 */
 	public void Error(){
 		System.out.println("Client: Error, request not completed.");
 		Error = true;
 		console();
 	}
+	/**
+	 * Message that files stored was successful
+	 * Prints out console again
+	 */
 	public void storedFiles() {
 		System.out.println("Files Stored");
 		console();
 	}
+	/**
+	 * Gets bytes
+	 */
 	public void hereAreBytes(byte[] file) {
 		FileOutputStream fos=null;
 		try {
@@ -491,32 +537,52 @@ public class TFSClient{
 			e.printStackTrace();
 		}
 	}
+	/**
+	 * Message that bytes appended successfully
+	 * Prints out console again
+	 */
 	public void appendedBytes() {
 		System.out.println("Done Appending");
 		console();
 	}
+	/**
+	 * Message that counted inner files
+	 * Prints out console again
+	 * @param integer number of files
+	 */
 	public void countedInnerFiles(int i) {
 		System.out.println("Found "+i+" inner files");
 		console();
 	}
+	/**
+	 * Message that seeking was successful
+	 * Prints out console again
+	 */
 	public void doneSeeking() {
 		System.out.println("Done Seeking");
 		console();
 	}
-	
+	/**
+	 * Message that client request was completed
+	 */
 	public void complete() {
 		//if (master != null) {
 			System.out.println("Client: Request completed.");
 			//console();
 		//}
 	}
-	
+	/**
+	 * Message that there was an error with client request
+	 */
 	public void error() {
 		System.out.println("Client: Error, request not completed.");
 		Error = true;
 		//if (master != null)
 			//console();
 	}
+	/**
+	 * Sending message to master
+	 */
 	private void sendMessageToMaster(){
 		try (
             Socket messageSocket = new Socket(hostName, portNumber);
@@ -531,6 +597,9 @@ public class TFSClient{
 			Error = true;
         } 
 	}
+	/**
+	 * Waiting for messages
+	 */
 	private void listenForResponse(){
 	/*Throw this method in before calling console again*/
 		System.out.println("Listening for response");
@@ -557,6 +626,10 @@ public class TFSClient{
 		}
 		parseMessage(incomingMessage);
 	}
+	/**
+	 * Parsing messages
+	 * @param Message
+	 */
 	private void parseMessage(TFSMessage t){
 		//read the data from TFSMessage and call the appropriate response 
 		switch(t.getMessageType()){
@@ -566,22 +639,23 @@ public class TFSClient{
 			case SUCCESS:
 				complete();
 				break;
-			case CHUNKSERVER:
-				//request=t.getDestChunk();
-				//bytes=t.getBytes();
-;				//sendRequest(request);
 			default:
 				System.out.println("done");
 				break;
 		}
 	}
-	
+	/**
+	 * Send a request of readfile
+	 * @param string request, bytes b
+	 */
 	private void sendRequest(String request, byte[] b){
 		outgoingMessage.setMessageType(TFSMessage.mType.READFILE);
 		outgoingMessage.setBytes(b);
 		outgoingMessage.setLocation(request);
 	}
-	
+	/**
+	 * The main
+	 */
 	public static void main (String[]args){
 		TFSClient thisClient = new TFSClient();
 		thisClient.console();

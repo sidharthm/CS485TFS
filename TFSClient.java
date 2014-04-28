@@ -268,6 +268,7 @@ public class TFSClient{
 		//master.recursiveDelete(delete,true);
 		outgoingMessage.setMessageType(TFSMessage.mType.DELETE);
 		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(delete[delete.length-1]);
 		//outgoingMessage.setFileName(delete[delete.length-1]);
 	}
 	/**
@@ -353,7 +354,7 @@ public class TFSClient{
 			f.read(b);
 			System.out.println("Client: Sending appendToFile request to Master.");
 			//master.appendToFileWithSize(path,b);//HERE
-			outgoingMessage.setMessageType(TFSMessage.mType.APPEND);
+			outgoingMessage.setMessageType(TFSMessage.mType.SIZEDAPPEND);
 			outgoingMessage.setPath(path);
 			outgoingMessage.setBytes(b);
 		}

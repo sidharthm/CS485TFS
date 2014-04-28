@@ -162,6 +162,7 @@ public class TFSChunkServer implements Runnable{
 				//Setting up outgoing message
 				//Request complete
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				outgoingMessage.setNumFiles(-1);
 			}
 		}
 		catch (IOException e) {
@@ -211,6 +212,7 @@ public class TFSChunkServer implements Runnable{
 					//Setting up outgoing message
 					//Request complete
 					outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+					outgoingMessage.setNumFiles(-1);
 				}
 			}
 			catch (IOException e) {
@@ -243,6 +245,7 @@ public class TFSChunkServer implements Runnable{
 				f.delete();
 				//Setting up the outgoing message
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				outgoingMessage.setNumFiles(-1);
 			}
 			else {
 				//Setting up the outgoing message
@@ -279,6 +282,7 @@ public class TFSChunkServer implements Runnable{
 				//Setting up the outgoing message
 				outgoingMessage.setBytes(b);
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				outgoingMessage.setNumFiles(-1);
 			}
 			else {
 				System.out.println("ChunkServer: Error, chunkHandle does not exist.");
@@ -309,6 +313,7 @@ public class TFSChunkServer implements Runnable{
 				f.close();
 				chunkThread.addFileToMap(fileHandle, new_b);
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				outgoingMessage.setNumFiles(-1);
 			}
 			catch (IOException e) {
 				e.printStackTrace();
@@ -341,6 +346,7 @@ public class TFSChunkServer implements Runnable{
 				f.close();
 				chunkThread.addFileToMap(fileHandle, new_b);
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				outgoingMessage.setNumFiles(-1);
 			}
 			catch (IOException e) {
 				e.printStackTrace();
@@ -372,6 +378,7 @@ public class TFSChunkServer implements Runnable{
 				f.close();
 				chunkThread.addFileToMap(fileHandle, new_b);
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				outgoingMessage.setNumFiles(-1);
 			}
 			catch (IOException e) {
 				e.printStackTrace();

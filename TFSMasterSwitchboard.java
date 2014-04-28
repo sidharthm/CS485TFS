@@ -75,7 +75,9 @@ public class TFSMasterSwitchboard implements Runnable{
 	        public void run() {
 	        	for (int i = 0; i < chunkServers.size(); i++) {
 	        		heartbeatMessage.setDestination(chunkServers.get(i));
-	        		sendTraffic(heartbeatMessage);
+	        		synchronized (outgoingMessages) {
+	        			outgoingMessages.add(heartbeatMessage);
+	        		}
 	        		System.out.println("Heartbeat sent");
 	        	}
 	        	responses.clear();
@@ -223,6 +225,17 @@ public class TFSMasterSwitchboard implements Runnable{
 		}
 		else if (type == TFSMessage.mType.SUCCESS) {
 			notifyThread(m.getSource(),true);
+			if (m.getNumFiles() > -1) {
+				TFSMessage mess = new TFSMessage(myName,TFSMessage.Type.MASTER);
+				mess.setMessageType(TFSMessage.mType.NUMFILES);
+				mess.setNumFiles(m.getNumFiles());
+				for (int i = 0; i < clients.size(); i++) {
+					mess.setDestination(clients.get(i));
+					synchronized (outgoingMessages) {
+						outgoingMessages.add(mess);
+					}
+				}
+			}
 		}
 		else if (type == TFSMessage.mType.ERROR) {
 			notifyThread(m.getSource(),false);

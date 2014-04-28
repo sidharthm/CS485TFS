@@ -1191,17 +1191,29 @@ public class TFSMaster implements Runnable {
 			}
 			*/
 			long id = file.getId();
-			try {
-				File jfile = new File("local/" + id);
-				RandomAccessFile f = new RandomAccessFile(jfile,"r");
-				byte[] b = new byte[(int)f.length()];
-				f.read(b);
+			TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+			m.setMessageType(TFSMessage.mType.READFILE);
+			m.setDestination(file.getReplicas().get(0));
+			m.setFileID(file.getId());
+			switchboard.addOutgoingMessage(m);
+			synchronized(lock) {
+				try {
+					waitingIP = file.getReplicas().get(0);
+					lock.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			if (!killProcess) {
 				removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
 				//client.complete();
-				return b;
+				return true;
 			}
-			catch (IOException e) {
-				e.printStackTrace();
+			else {
+				killProcess = false;
+				removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
+				//client.error();
+				return false;
 			}
 		}
 		//client.error();
@@ -1214,23 +1226,23 @@ public class TFSMaster implements Runnable {
 	 * @param path
 	 * @return
 	 */
-	public int countFilesInNode(String[] path) {
+	public boolean countFilesInNode(String[] path) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"),true);
 		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			//client.error();
-			return -1;
+			return false;
 		}
 		else if (file == null && errorType == ErrorType.LOCKING) {
 			System.out.println("Master: Directory locked");
-			return -1;
+			return false;
 		}
 		synchronized(file) {
 		int count = 0;
 		if (!file.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a file.");
 			//client.error();
-			return -1;
+			return false;
 		}
 		else {
 			/*
@@ -1244,24 +1256,30 @@ public class TFSMaster implements Runnable {
 			}
 			*/
 			long id = file.getId();
-			try {
-				File jfile = new File("local/" + id);
-				RandomAccessFile f = new RandomAccessFile(jfile,"rw");
-				long delta = 0;
-				while (delta < f.length()) {
-					f.seek(delta);
-					int size = f.readInt();
-					delta = delta + 4 + (long)size;
-					count++;
+			TFSMessage m = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+			m.setMessageType(TFSMessage.mType.COUNTFILES);
+			m.setDestination(file.getReplicas().get(0));
+			m.setFileID(file.getId());
+			switchboard.addOutgoingMessage(m);
+			synchronized(lock) {
+				try {
+					waitingIP = file.getReplicas().get(0);
+					lock.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
 			}
-			catch (IOException e) {
-				e.printStackTrace();
+			if (!killProcess) {
+				removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
+				//client.complete();
+				return true;
 			}
-		}
-		removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
-		//client.complete();
-		return count;
+			else {
+				killProcess = false;
+				removeLocks(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"));
+				//client.error();
+				return false;
+			}
 		}
 	}
 	

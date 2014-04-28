@@ -141,7 +141,7 @@ public class TFSMessage implements Serializable{
 					out.writeObject(raw_data);
 				}
 				else if (sourceType == Type.MASTER) {
-					
+					out.writeLong(fileID);
 				}
 				break;
 			case COUNTFILES:
@@ -165,7 +165,6 @@ public class TFSMessage implements Serializable{
 					out.writeObject(fileName);
 				}
 				else if (sourceType == Type.MASTER) {
-					
 				}
 				break;
 
@@ -288,7 +287,7 @@ public class TFSMessage implements Serializable{
 					raw_data = (byte[])in.readObject();
 				}
 				else if (sourceType == Type.MASTER) {
-					
+					fileID = in.readLong();
 				}
 				break;
 			case COUNTFILES:

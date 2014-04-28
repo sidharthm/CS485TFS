@@ -16,7 +16,7 @@ public class TFSMessage implements Serializable{
 	int seekOffset;
 	int numFiles; 
 	String errorMessage;
-	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE,INITIALIZE,PRINT};
+	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE,INITIALIZE,PRINT, NUMFILES};
 	private mType messageType;
 	int replicas;
 
@@ -83,6 +83,8 @@ public class TFSMessage implements Serializable{
 				out.writeObject(raw_data);
 				break;
 			case COUNTFILES:
+			case NUMFILES:
+				out.writeInt(numFiles);
 			case RECURSIVECREATE:
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
@@ -130,6 +132,8 @@ public class TFSMessage implements Serializable{
 				raw_data = (byte[])in.readObject();
 				break;
 			case COUNTFILES:
+			case NUMFILES:
+				numFiles = in.readInt();
 			case RECURSIVECREATE:
 				break;
 			case CREATEREPLICA:

@@ -55,6 +55,7 @@ public class TFSMasterSwitchboard implements Runnable{
 		heartbeatMessage.setMessageType(TFSMessage.mType.HEARTBEAT);
 		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
 		chunkServers = new ArrayList<String>();
+		clients = new ArrayList<String>();
 		responses = new ArrayList<String>();
 		System.out.println("My ip is " + myName);
 		root = new TFSNode(false,null,-1,"root",0);
@@ -236,5 +237,9 @@ public class TFSMasterSwitchboard implements Runnable{
 		TFSMasterSwitchboard testBoard = new TFSMasterSwitchboard();
 		Thread thread = new Thread(testBoard);
 		thread.start();
+	}
+	
+	public ArrayList<String> getClients(){
+		return clients;
 	}
 }

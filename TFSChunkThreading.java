@@ -1,103 +1,106 @@
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
+import java.io.*;
+import java.net.*;
 
-
-public class TFSMasterSwitchboard implements Runnable{
+public class TFSChunkThreading implements Runnable{
 	
-	TFSMaster mPrime;
-	Object mPrimeLock;
-	TFSMaster m2;
-	Object m2Lock;
+	TFSChunkServer mPrime;
 	boolean initialized;
-	private String myName;//This contains the server's IP
-	private int portNumber = 4444;//This details the port to be used for trafficking of information
-	private Socket serverSocket; //this socket is used to communicate with the client
-	private List<TFSMessage> outgoingMessages; //This message is used to convey information to other entities in the system
-	private TFSMessage heartbeatMessage;//This message is used to ensure chunk servers are still operational
-	private List<TFSMessage> incomingMessages; // This Queue will store any incoming messages
-	private TFSNode root;
-	private ArrayList<String> chunkServers;
-	private ArrayList<String> clients;
-	private ArrayList<String> responses;
-	private ArrayList<TFSMaster> masters;
-	Timer timer = new Timer();
-	Timer timer2 = new Timer();
 	
-	public TFSMasterSwitchboard() {
-		/*TEMPORARY: Master reads its own data from the config file so it has its own IP*/
+	private List<TFSMessage> outgoingMessages; //This message is used to convey information to other entities in the system
+	private List<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	
+	//Where in local are we storing all files - default location - better if in config file
+	String location;
+	//Relating handles and files
+	//Map<Long, byte[]> mapHandleFile = new HashMap<Long, byte[]>();
+	Map<Long, byte[]> mapHandleFile = Collections.synchronizedMap(new HashMap<Long, byte[]>());
+	//Relating handles and file names in local folder
+	//Map<Long, String> mapHandlePath = new HashMap<Long, String>();
+	Map<Long, String> mapHandlePath = Collections.synchronizedMap(new HashMap<Long, String>());
+	
+	
+	//Stores own IP to attach to outgoing messages
+	String myIP;
+	
+	//read from config_chunk to initialize port and connections
+	String hostName;
+	int portNumber = 4444; //Default unless in stated in the config fle
+	
+	public TFSChunkThreading() {
+		setUpChunk();
+		
+		mPrime = new TFSChunkServer(this);
+		initialized = false;
+		
+		Thread thread2 = new Thread(mPrime);
+		thread2.start();
+	}
+	
+	private void setUpChunk() {
+		/** All initialization for the chunk should be done here **/
+		System.out.println("Welcome to TFS ChunkServer");
+		System.out.println("Loading configuration files");
+		
+		
+		//Retrieve configuration data from config_chunk.txt
 		try {
-			Scanner inFile = new Scanner(new File("config.txt"));
-			while (inFile.hasNext()){
-				String input = inFile.next();
+			Scanner configFile = new Scanner(new File("config.txt"));
+			while (configFile.hasNext()){
+				String input = configFile.next();
 				if (input.equals("MASTER"))
-					myName = inFile.next();
+					hostName = configFile.next();
+				//else if (input.equals("PORT"))
+				//	portNumber = Integer.valueOf(configFile.next());
+				else if(input.equals("LOCATION"))
+					location = configFile.next();
 			}
+			configFile.close();
 		} catch (FileNotFoundException e){
 			System.err.println("Error: Configuration file not found");
 			System.exit(1);
 		}
-		masters = new ArrayList<TFSMaster>();
-		outgoingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
-		//outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
-		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
-		heartbeatMessage.setMessageType(TFSMessage.mType.HEARTBEAT);
-		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
-		chunkServers = new ArrayList<String>();
-		responses = new ArrayList<String>();
-		System.out.println("My ip is " + myName);
-		root = new TFSNode(false,null,-1,"root",0);
-		mPrime = new TFSMaster(this,mPrimeLock);
-		m2 = new TFSMaster(this,m2Lock);
-		masters.add(mPrime);
-		masters.add(m2);
-		mPrime.initializeStructure();
-		timer.scheduleAtFixedRate(new TimerTask() {
-	        public void run() {
-	        	for (int i = 0; i < chunkServers.size(); i++) {
-	        		heartbeatMessage.setDestination(chunkServers.get(i));
-	        		sendTraffic(heartbeatMessage);
-	        	}
-	        	responses.clear();
-	        	timer2.schedule(new TimerTask() {
-	    	        public void run() {
-	    	           for (int i = 0; i < chunkServers.size(); i++) {
-	    	        	   if (responses.indexOf(chunkServers.get(i)) == -1) {
-	    	        		   chunkServers.remove(i);
-	    	        	   }
-	    	           }
-	    	        }
-	    	    }, 0, 30000);
-	        }
-	    }, 0, 60000);
 		
-		Thread thread2 = new Thread(mPrime);
-		Thread thread3 = new Thread(m2);
-		thread2.start();
-		thread3.start();
+		System.out.println("Master: " + hostName);
+		System.out.println("Port: " + portNumber);
+		System.out.println("Saving in location: " + location);
+		
+		//Initializing communication with Server through handshake
+		try (
+            Socket messageSocket =
+                new Socket(hostName, portNumber);
+			ObjectOutputStream out =
+                new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket   
+        ) {
+			//Converting chunk IP to string
+			myIP = messageSocket.getLocalAddress().toString();
+			myIP = myIP.substring(1);
+			System.out.println("ChunkServer: my IP Address is " + myIP);
+			TFSMessage handshakeMessage = new TFSMessage(myIP,TFSMessage.Type.CHUNK);
+			handshakeMessage.setMessageType(TFSMessage.mType.HANDSHAKE);
+			handshakeMessage.setDestination(hostName);
+			sendTraffic(handshakeMessage);
+			messageSocket.close();//Done, so let's close this
+			//This is to basically store in the hashmap whatever files are already in the folder
+			//retrieveFiles();
+		
+		} catch (UnknownHostException e) {
+            System.err.println("Error: Don't know about host " + hostName);
+            System.exit(1);
+        } catch (IOException e) {
+            System.err.println("Error: Couldn't get I/O for the connection to " + hostName);
+            System.exit(1);
+        }
+		
+		outgoingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
+		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
+		
+		System.out.println("Initialization of ChunkServer is complete");
 	}
 	
-	public TFSNode getRoot() {
-		return root;
-	}
-	
-	public ArrayList<String> getChunkServers() {
-		return chunkServers;
-	}
-	
-	public String getName() {
-		return myName;
+		
+	public List<TFSMessage> getOutgoingMessages() {
+		return outgoingMessages;
 	}
 	
 	public void addOutgoingMessage(TFSMessage m) {
@@ -112,6 +115,34 @@ public class TFSMasterSwitchboard implements Runnable{
 		}
 	}
 	
+	public String getLocation() {
+		return location;
+	}
+	
+	public Map getPathMap() {
+		return mapHandlePath;
+	}
+	
+	public Map getFileMap() {
+		return mapHandleFile;
+	}
+	
+	public void addFileToMap(long fileHandle, byte[] b) {
+		mapHandleFile.put(fileHandle, b);
+	}
+	
+	public void addPathToMap(long fileHandle, String fileName) {
+		mapHandlePath.put(fileHandle,fileName);
+	}
+	
+	public void deletePathInMap(long fileHandle) {
+		mapHandlePath.remove(fileHandle);
+	}
+	
+	public void deleteFileInMap(long fileHandle) {
+		mapHandleFile.remove(fileHandle);
+	}
+	
 	private void scheduler() {
 		try {
 			if (!outgoingMessages.isEmpty()) {
@@ -119,7 +150,6 @@ public class TFSMasterSwitchboard implements Runnable{
 			}
 			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
 			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
-				System.out.println("Parsing message");
 			 	parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
 			}
 		} catch (ClassNotFoundException e){
@@ -143,6 +173,7 @@ public class TFSMasterSwitchboard implements Runnable{
             ObjectOutputStream out =
                 new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
         ) {
+			current.setSource(myIP);
 			current.sendMessage(out);
         } catch (UnknownHostException e) {
             System.err.println("Error: Don't know about host " + current.getDestination());
@@ -153,11 +184,11 @@ public class TFSMasterSwitchboard implements Runnable{
         } 
 	}
 
-	
 	private TFSMessage resetMessage(TFSMessage m){
 		//change all parameters besides messageSource and sourceType to null types 
 		return m;
 	}
+	
 	private List<TFSMessage> listenForTraffic(List<TFSMessage> q) throws ClassNotFoundException{
 		try (
 			ServerSocket serverSocket =
@@ -193,48 +224,14 @@ public class TFSMasterSwitchboard implements Runnable{
 	private void parseMessage(TFSMessage m){
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
+		m.setDestination(m.getSource());
 		TFSMessage.mType type = m.getMessageType();
-		if (type == TFSMessage.mType.HANDSHAKE && m.getSourceType() == TFSMessage.Type.CHUNK){
-			chunkServers.add(m.getSource());
-		}
-		else if (type == TFSMessage.mType.HANDSHAKE && m.getSourceType() == TFSMessage.Type.CLIENT){
-			clients.add(m.getSource());
-		}
-		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {
-			responses.add(m.getSource());
-		}
-		else if (type == TFSMessage.mType.SUCCESS) {
-			notifyThread(m.getSource(),true);
-		}
-		else if (type == TFSMessage.mType.ERROR) {
-			notifyThread(m.getSource(),false);
-		}
-		else {
-			mPrime.addMessage(m);
-		}
-	}
-	
-	private void notifyThread(String IP, boolean success) {
-		for (int i = 0; i < masters.size(); i++) {
-			if (masters.get(i).getIP().equals(IP)) {
-				if (success) {
-					synchronized(masters.get(i).getLock()) {
-						notifyAll();
-					}
-				}
-				else {
-					masters.get(i).setKillProcess(true);
-					synchronized(masters.get(i).getLock()) {
-						notifyAll();
-					}
-				}
-			}
-		}
+		mPrime.addMessage(m);
 	}
 	
 	public static void main(String[] args) {
-		TFSMasterSwitchboard testBoard = new TFSMasterSwitchboard();
-		Thread thread = new Thread(testBoard);
+		TFSChunkThreading cThread = new TFSChunkThreading();
+		Thread thread = new Thread(cThread);
 		thread.start();
 	}
 }

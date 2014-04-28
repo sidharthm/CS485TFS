@@ -2,176 +2,58 @@ import java.util.*;
 import java.io.*;
 import java.net.*;
 
-public class TFSChunkServer {
+public class TFSChunkServer implements Runnable{
 
 	//Where in local are we storing all files - default location - better if in config file
 	String location;
-	//Relating handles and files
-	Map<Long, byte[]> mapHandleFile = new HashMap<Long, byte[]>();
-	//Relating handles and file names in local folder
-	Map<Long, String> mapHandlePath = new HashMap<Long, String>();
-	//Stores own IP to attach to outgoing messages
-	String myIP;
-	//64-bit handles for files
-	long nextAvailableHandle = 0;
-	//IDs for chunkServer to differentiate
-	int chunkServerID = 0;
-	static int nextAvailableChunkServerID = 0;
 	
-	//HACK: BOOLEAN FOR NOW
-	//boolean Error = false;
-	//LATER: Should read from config_chunk to initialize port and connections
-	String hostName;
-	int portNumber;
+	TFSChunkThreading chunkThread;
+	private List<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	private TFSMessage outgoingMessage; 
+	private int nextAvailableHandle = 0;
 	
-	TFSMessage outgoingMessage;
-	TFSMessage incomingMessage;
-	
-	public TFSChunkServer() {
-		chunkServerID = nextAvailableChunkServerID;
-		//location = fileLocation;
-		nextAvailableChunkServerID++;
-		setUpChunk();
+	public TFSChunkServer(TFSChunkThreading c) {
+		/*Set up all messages with the appropriate initialization*/
+		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
+		outgoingMessage = new TFSMessage();
+		chunkThread = c;
+		location = c.getLocation();
 	}
 	
-	private void setUpChunk() {
-		/** All initialization for the chunk should be done here **/
-		System.out.println("Welcome to TFS ChunkServer");
-		System.out.println("Loading configuration files");
-		
-		
-		//Retrieve configuration data from config_chunk.txt
-		try {
-			Scanner configFile = new Scanner(new File("chunk_config.txt"));
-			while (configFile.hasNext()){
-				String input = configFile.next();
-				if (input.equals("MASTER"))
-					hostName = configFile.next();
-				else if (input.equals("PORT"))
-					portNumber = Integer.valueOf(configFile.next());
-				else if(input.equals("LOCATION"))
-					location = configFile.next();
-			}
-			configFile.close();
-		} catch (FileNotFoundException e){
-			System.err.println("Error: Configuration file not found");
-			System.exit(1);
-		}
-		
-		System.out.println("Master: " + hostName);
-		System.out.println("Port: " + portNumber);
-		System.out.println("Saving in location: " + location);
-		
-		//Initializing communication with Server through handshake
-		try (
-            Socket messageSocket =
-                new Socket(hostName, portNumber);
-			ObjectOutputStream out =
-                new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket   
-        ) {
-			//Converting chunk IP to string
-			myIP = messageSocket.getLocalAddress().toString();
-			myIP = myIP.substring(1);
-			System.out.println("ChunkServer " + chunkServerID + ": my IP Address is " + myIP);
-			TFSMessage handshakeMessage = new TFSMessage(myIP,TFSMessage.Type.CHUNK);
-			handshakeMessage.setMessageType(TFSMessage.mType.HANDSHAKE);
-			handshakeMessage.sendMessage(out);
-			messageSocket.close();//Done, so let's close this
-			//This is to basically store in the hashmap whatever files are already in the folder
-			//retrieveFiles();
-		
-		} catch (UnknownHostException e) {
-            System.err.println("Error: Don't know about host " + hostName);
-            System.exit(1);
-        } catch (IOException e) {
-            System.err.println("Error: Couldn't get I/O for the connection to " + hostName);
-            System.exit(1);
-        }
-		
-		outgoingMessage = new TFSMessage(myIP,TFSMessage.Type.CHUNK);
-		incomingMessage = new TFSMessage();
-		
-		System.out.println("Initialization of ChunkServer " + chunkServerID + " is complete");
-	}
+	// public int getID() {
+		// return chunkServerID;
+	// }
 	
-	public int getID() {
-		return chunkServerID;
-	}
+	// public int numOfFile() {
+		// return mapHandleFile.size();
+	// }
 	
-	public int numOfFile() {
-		return mapHandleFile.size();
-	}
-	
-	private void Run() {
-		while (true){
-			
-			//Wait for receive messages
-			listenForMessages();
-			
-			/**
-			if (content != null){ //if we received data
-				//HACK: STILL NEED A SWITCH STATEMENT HERE
-				
-				//chunkserver.storeTest(incomingMessage.getFile());
-				
-				int receivedHandle = 0;
-				//Error = chunkserver.retrieveTest(receivedHandle);
-				//chunkserver.retrieveTest(receivedHandle);
-			
-				//chunkserver.deleteTest(receivedHandle);
-				
-				chunkserver.send(out);				
-			}
-			**/
+	public void run() {
+		while (true) {
+			scheduler();
 		}
 	}
 	
-	private void listenForMessages() {
-		try (
-            ServerSocket serverSocket =
-                new ServerSocket(portNumber);
-            Socket inmessageSocket = serverSocket.accept();     
-			//Receive messages
-            ObjectInputStream in = new ObjectInputStream(inmessageSocket.getInputStream()); 
-        ) {
-			//we could use a timer to keep it from hanging indefintely
-			System.out.println("ChunkServer " + getID() + ": Waiting for connections...");
-			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
-				incomingMessage.receiveMessage(in); //call readObject 
+	public void scheduler() {
+		if (incomingMessages.size() > 0) {
+			TFSMessage t;
+			synchronized(incomingMessages) {
+				t = incomingMessages.remove(0);
 			}
-			//Print out the received request from sender
-			System.out.println("ChunkServer " + getID() + ": Receive request of " + incomingMessage.getMessageType().toString() + " from " +  incomingMessage.getSourceType().toString() + " " + incomingMessage.getSource());
-			
-			serverSocket.close();
-		} catch (IOException e) {
-            System.out.println("Exception caught when trying to listen on port "
-                + portNumber + " or listening for a connection");
-            System.out.println(e.getMessage());
-        } catch (ClassNotFoundException e){
-			System.out.println("Class error found when trying to listen to port " + portNumber);
-			System.out.println(e.getMessage());
-		}
-		parseMessage(incomingMessage);	
-	}
-	
-	private void parseMessage(TFSMessage t) {
-		//HACK
-		long HACK = 1234;
-		//Read the request and read paramaters appropriately and call the right action
-		switch(t.getMessageType()) {
+			TFSMessage.mType type = t.getMessageType();
+			switch(type) {
 			//Two possibilities, talking with client and talking with master
 			case CREATEFILE:
 				if(t.getSourceType() == TFSMessage.Type.CLIENT)
 					//I NEED FILEHANDLE (LONG) AND FILE (BYTE[])
-					createFile(t.getSource(), HACK, t.getBytes());
+					createFile(t.getSource(), t.getFileID(), t.getBytes());
 				else if(t.getSourceType() == TFSMessage.Type.MASTER)
 					//I NEED FILEHANDLE (LONG) AND FILENAME
-					createFile(t.getSource(), HACK, t.getFileName());
+					createFile(t.getSource(), t.getFileID(), String.valueOf(t.getFileID()));
 				break;
 			
 			case DELETE:
-				//I NEED FILEHANDLE (LONG)
-				deleteFile(t.getSource(), HACK);
+				deleteFile(t.getSource(), t.getFileID());
 				break;
 			
 			//Consistent communication with master
@@ -180,31 +62,28 @@ public class TFSChunkServer {
 				break;
 			
 			case SEEK:
-				//NOT SURE ABOUT PARAMETERS
-				seekAndWrite();
+				seekAndWrite(t.getSource(), t.getOffset(), t.getFileID(), t.getBytes());
 				break;
 			
 			case SIZEDAPPEND:
-				//NOT SURE ABOUT PARAMETERS
-				sizedAppend();
+				sizedAppend(t.getSource(), t.getFileID(), t.getBytes());
 				break;
 			
 			case APPEND:
-				//NOT SURE ABOUT PARAMETERS
-				append();
+				append(t.getSource(), t.getFileID(), t.getBytes());
 				break;
 			
 			//Allows client to receive a file from the TFS
 			case READFILE:
-				//I NEED FILEHANDLE (LONG)
-				readFile(t.getSource(), HACK);
+				readFile(t.getSource(), t.getFileID());
 				break;
 			
 			case COUNTFILES:
 				//I NEED FILEHANDLE - ALSO NEED SOME INT TO STORE THE COUNT INFO
-				countFiles(t.getSource(), HACK);
+				countFiles(t.getSource(), t.getFileID());
 				break;
 			
+			//DON'T THINK NEED THIS CAUSE MASTER SENDS CREATEFILE FOR REPLICAS TOO.
 			case CREATEREPLICA:
 				//NOT SURE ABOUT PARAMETERS
 				createReplica();
@@ -221,12 +100,13 @@ public class TFSChunkServer {
 				// break;
 			
 			default:
-				parseImpossible(t.getSource(),t.getMessageType().toString());
-				System.out.println();
+				// parseImpossible(t.getSource(),t.getMessageType().toString());
+				// System.out.println();
 				break;
+			}		
 		}
 	}
-
+/**
 	private void parseImpossible(String sender, String msg) {
 		System.out.println("ChunkServer " + getID() + ": CAN'T UNDERSTAND request " + msg + " from " + sender);
 		
@@ -235,31 +115,36 @@ public class TFSChunkServer {
 		outgoingMessage.setDestination(sender);
 		//Request is not completed
 		outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
-		send(sender);
+		send(outgoingMessage);
 	}
+**/
+
 	
 	//Create File request from Server to setup file handle and file name
-	private void createFile(String sender, long fileHandle, String fileName) {		
+	private void createFile(String sender, long fileHandle, String fileName) {	
 		String newLocation = location + fileName;
 		try{
 			//Creating a new file
 			File f = new File(newLocation);
 			//File already exists
 			if(f.exists()) {
-				System.out.println("ChunkServer " + chunkServerID + ": Error, file already exists in local.");				
+				System.out.println("ChunkServer: Error, file already exists in local.");				
 				//Setting up outgoing message
 				//Request is not completed
 				outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
 			}
 			else {
-				System.out.println("ChunkServer " + getID() + ": Creating file, " + fileName + ".");
+				System.out.println("ChunkServer: Creating file, " + fileName + ".");
 				//Empty file
 				FileOutputStream fileOutputStream = new FileOutputStream(newLocation);
 				fileOutputStream.close();
 				//Since adding file to local is successful need to add to map
-				mapHandlePath.put(fileHandle,fileName);
+				synchronized(chunkThread.getPathMap()) {
+					chunkThread.addPathToMap(fileHandle, fileName);
+				}
+				//mapHandlePath.put(fileHandle,fileName);
 				//nextAvailableHandle++;
-				System.out.println("ChunkServer " + getID() + ": File, " + fileName + ", created.");
+				System.out.println("ChunkServer: File, " + fileName + ", created.");
 				//Setting up outgoing message
 				//Request complete
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
@@ -273,163 +158,242 @@ public class TFSChunkServer {
 		}
 		//Sending message back to sender of request
 		outgoingMessage.setDestination(sender);
-		send(sender);
+		send(outgoingMessage);
 	}
 		
 	//createFile request from client overwrites just created empty file from server
-	private void createFile(String sender, long fileHandle, byte[] b) {		
-		String fileName = mapHandlePath.get(fileHandle);
-		String newLocation = location + fileName;
-		try{
-			//Creating a new file
-			File f = new File(newLocation);
-			//File already exists
-			if(!f.exists()) {
-				System.out.println("ChunkServer " + chunkServerID + ": Error, file not yet exist in local.");				
+	private void createFile(String sender, long fileHandle, byte[] b) {
+		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
+			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
+			Map<Long, String> mapHandlePath = chunkThread.getPathMap();
+			String fileName = mapHandlePath.get(fileHandle);
+			String newLocation = location + fileName;
+			try{
+				//Creating a new file
+				File f = new File(newLocation);
+				//File already exists
+				if(!f.exists()) {
+					System.out.println("ChunkServer: Error, file not yet exist in local.");				
+					//Setting up outgoing message
+					//Request is not completed
+					outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+				}
+				else {
+					System.out.println("ChunkServer: Creating (Overwriting) file, " + fileName + ", for client.");
+					//Opening local location and writing/adding file to it
+					FileOutputStream fileOutputStream = new FileOutputStream(newLocation);
+					fileOutputStream.write(b);
+					fileOutputStream.close();
+					//Since adding file to local is successful need to add to map
+					chunkThread.addFileToMap(fileHandle, b);
+					//mapHandleFile.put(fileHandle, b);
+					//nextAvailableHandle++;
+					System.out.println("ChunkServer: File, " + fileName + ", created (overwrited) for client.");
+					//Setting up outgoing message
+					//Request complete
+					outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+				}
+			}
+			catch (IOException e) {
 				//Setting up outgoing message
 				//Request is not completed
 				outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+				e.printStackTrace();
 			}
-			else {
-				System.out.println("ChunkServer " + getID() + ": Creating (Overwriting) file, " + fileName + ", for client.");
-				//Opening local location and writing/adding file to it
-				FileOutputStream fileOutputStream = new FileOutputStream(newLocation);
-				fileOutputStream.write(b);
-				fileOutputStream.close();
-				//Since adding file to local is successful need to add to map
-				mapHandleFile.put(fileHandle, b);
-				//nextAvailableHandle++;
-				System.out.println("ChunkServer " + getID() + ": File, " + fileName + ", created (overwrited) for client.");
-				//Setting up outgoing message
-				//Request complete
-				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
-			}
-		}
-		catch (IOException e) {
-			//Setting up outgoing message
-			//Request is not completed
-			outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
-			e.printStackTrace();
-		}
-		//Sending message back to sender of request
-		outgoingMessage.setDestination(sender);
-		send(sender);
+			//Sending message back to sender of request
+			outgoingMessage.setDestination(sender);
+			send(outgoingMessage);
+		}}
 	}
 	
 	//For deleting files in the chunkServer map and in the folder
 	private void deleteFile(String sender, long fileHandle) {
-		String fileName = mapHandlePath.get(fileHandle);
-		String newLocation = location + fileName;
-		//outgoingMessage.ImChunk();
-		//Deletiing in local folder
-		File f = new File(newLocation);
-		if(f.exists()) {
-			f.delete();
-			//Setting up the outgoing message
-			outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
-		}
-		else {
-			//Setting up the outgoing message
-			outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
-		}
-		//Deleting in key and value in hashmap
-		mapHandleFile.remove(fileHandle);
-		mapHandlePath.remove(fileHandle);
-		send(sender);
+		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
+			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
+			Map<Long, String> mapHandlePath = chunkThread.getPathMap();
+			String fileName = mapHandlePath.get(fileHandle);
+			String newLocation = location + fileName;
+			//outgoingMessage.ImChunk();
+			//Deletiing in local folder
+			File f = new File(newLocation);
+			if(f.exists()) {
+				f.delete();
+				//Setting up the outgoing message
+				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+			}
+			else {
+				//Setting up the outgoing message
+				outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+			}
+			//Deleting in key and value in hashmap
+			chunkThread.deleteFileInMap(fileHandle);
+			chunkThread.deletePathInMap(fileHandle);
+			send(outgoingMessage);
+		}}
 	}	
 	
 	private void heartbeatResponse(String sender) {
 		//Setting up outgoing message
 		outgoingMessage.setMessageType(TFSMessage.mType.HEARTBEATRESPONSE);
 		outgoingMessage.setDestination(sender);
-		send(sender);
+		send(outgoingMessage);
 	}
 	
 	private void readFile(String sender, long fileHandle) {
-		//Since all files in the folder were retrieved in start of chunkserver and all files added are in the map as well, there is no need to read for local files to send the byte array to client
-		byte[] b;
-		b = mapHandleFile.get(fileHandle);
-		if(b != null) {
-			//Setting up the outgoing message
-			outgoingMessage.setBytes(b);
-			outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
-		}
-		else {
-			System.out.println("ChunkServer " + chunkServerID + ": Error, chunkHandle does not exist.");
-			//Setting up outgoing message
-			//Request is not completed
-			outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
-		}
-		outgoingMessage.setDestination(sender);
-		send(sender);
-	}
-	
-	//NOT YET IMPLEMENTED
-	private void seekAndWrite() {
-	
-	}
-	
-	//NOT YET IMPLEMENTED
-	private void sizedAppend() {
-	
-	}
-	
-	//NOT YET IMPLEMENTED
-	private void append() {
-	
-	}
-	
-	private void countFiles(String sender, long fileHandle) {
-		int count = 0;
-		String fileName = mapHandlePath.get(fileHandle);
-		String newLocation = location + fileName;
-		try{
-			//Creating a new file
-			File f = new File(newLocation);
-			//File already exists
-			if(!f.exists()) {
-				System.out.println("ChunkServer " + chunkServerID + ": Error, file not yet exist in local.");				
+		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
+			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
+			Map<Long, String> mapHandlePath = chunkThread.getPathMap();
+			//Since all files in the folder were retrieved in start of chunkserver and all files added are in the map as well, there is no need to read for local files to send the byte array to client
+			byte[] b;
+			b = mapHandleFile.get(fileHandle);
+			if(b != null) {
+				//Setting up the outgoing message
+				outgoingMessage.setBytes(b);
+				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+			}
+			else {
+				System.out.println("ChunkServer: Error, chunkHandle does not exist.");
 				//Setting up outgoing message
 				//Request is not completed
 				outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
 			}
-			else {
-				RandomAccessFile rf = new RandomAccessFile(f,"rw");
-				long delta = 0;
-				while (delta < rf.length()) {
-					rf.seek(delta);
-					int size = rf.readInt();
-					delta = delta + 4 + (long)size;
-					count++;
-				}
-				//Setting up the outgoing message
+			outgoingMessage.setDestination(sender);
+			send(outgoingMessage);
+		}}
+	}
+	
+	private void seekAndWrite(String sender, int offset, long fileHandle, byte[] b) {
+		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
+			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
+			Map<Long, String> mapHandlePath = chunkThread.getPathMap();
+			String newLocation = location + String.valueOf(fileHandle);	
+			try {
+				File jfile = new File(newLocation);
+				RandomAccessFile f = new RandomAccessFile(jfile,"rw");
+				f.seek((long)offset);
+				f.write(b);
+				byte[] new_b = new byte[(int)f.length()];
+				f.close();
+				chunkThread.addFileToMap(fileHandle, new_b);
 				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
-				//HACK: I DON'T KNOW WHERE TO PUT THE COUNT
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		outgoingMessage.setDestination(sender);
-		send(sender);
+			catch (IOException e) {
+				e.printStackTrace();
+				outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+			}
+			outgoingMessage.setDestination(sender);
+			send(outgoingMessage);
+		}}
+	}
+	
+	//Appending to a file with the initial 4 bit size
+	private void sizedAppend(String sender, long fileHandle, byte[] b) {
+		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
+			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
+			Map<Long, String> mapHandlePath = chunkThread.getPathMap();
+			String newLocation = location + String.valueOf(fileHandle);	
+			try {
+				File jfile = new File(newLocation);
+				RandomAccessFile f = new RandomAccessFile(jfile,"rw");
+				f.seek(0);
+				f.skipBytes((int)f.length());
+				int length = b.length;
+				f.writeInt(length);
+				f.write(b);
+				//Copying the new byte array to the map, no need to update path map since filename stays the same
+				byte[] new_b = new byte[(int)f.length()];
+				f.close();
+				chunkThread.addFileToMap(fileHandle, new_b);
+				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+				outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+			}
+			outgoingMessage.setDestination(sender);
+			send(outgoingMessage);
+		}}
+	}
+	
+	//Simple append
+	private void append(String sender, long fileHandle, byte[] b) {
+		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
+			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
+			Map<Long, String> mapHandlePath = chunkThread.getPathMap();
+			String newLocation = location + String.valueOf(fileHandle);	
+			try {
+				File jfile = new File(newLocation);
+				RandomAccessFile f = new RandomAccessFile(jfile,"rw");
+				f.seek(0);
+				f.skipBytes((int)f.length());
+				f.write(b);
+				//Copying the new byte array to the map, no need to update path map since filename stays the same
+				byte[] new_b = new byte[(int)f.length()];
+				f.close();
+				chunkThread.addFileToMap(fileHandle, new_b);
+				outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+				outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+			}
+			outgoingMessage.setDestination(sender);
+			send(outgoingMessage);
+		}}
+	}
+	
+	//Sends the number of files in a chunk
+	private void countFiles(String sender, long fileHandle) {
+		int count = 0;
+		synchronized(chunkThread.getFileMap()) { synchronized(chunkThread.getPathMap()) {
+			Map<Long, byte[]> mapHandleFile = chunkThread.getFileMap();
+			Map<Long, String> mapHandlePath = chunkThread.getPathMap();
+			String fileName = mapHandlePath.get(fileHandle);
+			String newLocation = location + fileName;
+			try{
+				//Creating a new file
+				File f = new File(newLocation);
+				//File already exists
+				if(!f.exists()) {
+					System.out.println("ChunkServer: Error, file not yet exist in local.");				
+					//Setting up outgoing message
+					//Request is not completed
+					outgoingMessage.setMessageType(TFSMessage.mType.ERROR);
+				}
+				else {
+					RandomAccessFile rf = new RandomAccessFile(f,"rw");
+					long delta = 0;
+					while (delta < rf.length()) {
+						rf.seek(delta);
+						int size = rf.readInt();
+						delta = delta + 4 + (long)size;
+						count++;
+					}
+					//Setting up the outgoing message
+					outgoingMessage.setMessageType(TFSMessage.mType.SUCCESS);
+					outgoingMessage.setNumFiles(count);
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			outgoingMessage.setDestination(sender);
+			send(outgoingMessage);
+		}}
 	}
 
-	//NOT YET IMPLEMENTED
+	//Not really needed because replicas are createFile messages
 	private void createReplica() {
 	
 	}
 	
 	/**private void success() {
-		//HACK
 		//HONESTLY, I DON'T THINK CHUNKSERVER WOULD NEED TO KNOW SUCCESS OR SOMETHING
-		//WHEN WILL THIS HAPPEN?
 	}
 	
 	private void error() {
-		//HACK
 		//HONESTLY, I DON'T THINK CHUNKSERVER WOULD NEED TO KNOW SUCCESS OR SOMETHING
-		//WHEN WILL THIS HAPPEN?
 	}**/
-	
+/**
 	private void send(String senderIP) {
 		try (
             Socket messageSocket = new Socket(senderIP, portNumber);
@@ -446,6 +410,15 @@ public class TFSChunkServer {
 			//Error = true;
         }
 	}	
+**/
+	public void addMessage(TFSMessage m) {
+		incomingMessages.add(m);
+	}
+	
+	public void send(TFSMessage m) {
+		chunkThread.addOutgoingMessage(m);
+	}
+
 	
 	//Retrieve Files
 	private void retrieveFiles() {
@@ -464,8 +437,11 @@ public class TFSChunkServer {
 					RandomAccessFile f = new RandomAccessFile(file, "r");
 					byte[] b = new byte[(int)f.length()];
 					f.read(b);
-					mapHandleFile.put(nextAvailableHandle, b);
-					mapHandlePath.put(nextAvailableHandle, file.getName());
+					
+					//mapHandleFile.put(nextAvailableHandle, b);
+					//mapHandlePath.put(nextAvailableHandle, file.getName());
+					chunkThread.addFileToMap(nextAvailableHandle, b);
+					chunkThread.addPathToMap(nextAvailableHandle, file.getName());
 					nextAvailableHandle++;
 					System.out.println("File name is: " + file.getName());
 				}
@@ -475,38 +451,6 @@ public class TFSChunkServer {
 				}
 			}
 		}
-	}
-	
-	public static void main(String[] args) throws IOException, ClassNotFoundException {
-
-		TFSChunkServer chunkserver = new TFSChunkServer();
-		chunkserver.Run();
-		
-		/**
-        // if (args.length != 1) {
-            // System.err.println("Usage: java EchoServer <port number>");
-            // System.exit(1);
-        // }
-        
-        //int portNumber = Integer.parseInt(args[0]);
-		int portNumber = 4444;
-		
-        try (
-            ServerSocket serverSocket =
-                new ServerSocket(Integer.parseInt(args[0]));
-            Socket clientSocket = serverSocket.accept();     
-            PrintWriter out_print =
-                new PrintWriter(clientSocket.getOutputStream(), true); //Sends the String back to client to print, can change this to ObjectOutput to send messages
-			//Receive messages
-            ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); 
-			//Send Messages
-			ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
-        ) {
-			//int messageCount = 0; //Just a hack to keep it from closing the connection. Probably need to throw all this into the "run" method
-			//This is to basically store in the hashmap whatever files are already in the folder
-			chunkserver.retrieveFiles();
-			//System.out.println(chunkserver.numOfFile());
-		**/
 	}
 }
 	

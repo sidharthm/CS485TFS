@@ -26,7 +26,7 @@ public class TFSClient{
 	
 	String hostName; //Load this from a file, it stores the master server's IP
 	String myName; //This stores the server's own IP so that it can attach that information to messages
-	int portNumber = 4444; //Change this if you want to communicate on a different port
+	int portNumber = 8000; //Change this if you want to communicate on a different port
 	Socket clientMessageSocket; //This is the socket the client uses to contact the master
 	
 	TFSMessage outgoingMessage;
@@ -604,6 +604,7 @@ public class TFSClient{
             ObjectOutputStream out = new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
         ) {
 			outgoingMessage.sendMessage(out); //send the message to the server
+			try { Thread.sleep(100); } catch(InterruptedException e) {}
         } catch (UnknownHostException e) {
             System.err.println("Don't know about host " + hostName);
 			Error = true;
@@ -618,6 +619,7 @@ public class TFSClient{
 	private void listenForResponse()throws IOException, ClassNotFoundException{
 	/*Throw this method in before calling console again*/
 		System.out.println("Listening for response");
+		try { Thread.sleep(1000); } catch(InterruptedException e) {}
 		System.out.println(incomingMessage.getMessageType().toString());
 		
 			ServerSocket serverSocket = new ServerSocket(portNumber);

@@ -22,7 +22,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	Object m2Lock;
 	boolean initialized;
 	private String myName;//This contains the server's IP
-	private int portNumber = 4444;//This details the port to be used for trafficking of information
+	private int portNumber = 8000;//This details the port to be used for trafficking of information
 	private Socket serverSocket; //this socket is used to communicate with the client
 	private List<TFSMessage> outgoingMessages; //This message is used to convey information to other entities in the system
 	private TFSMessage heartbeatMessage;//This message is used to ensure chunk servers are still operational
@@ -65,6 +65,10 @@ public class TFSMasterSwitchboard implements Runnable{
 		masters.add(mPrime);
 		masters.add(m2);
 		mPrime.initializeStructure();
+		Thread thread2 = new Thread(mPrime);
+		Thread thread3 = new Thread(m2);
+		thread2.start();
+		thread3.start();
 		timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
 	        	for (int i = 0; i < chunkServers.size(); i++) {
@@ -84,10 +88,6 @@ public class TFSMasterSwitchboard implements Runnable{
 	        }
 	    }, 0, 60000);
 		
-		Thread thread2 = new Thread(mPrime);
-		Thread thread3 = new Thread(m2);
-		thread2.start();
-		thread3.start();
 	}
 	
 	public TFSNode getRoot() {
@@ -107,11 +107,15 @@ public class TFSMasterSwitchboard implements Runnable{
 			System.out.println("added here");
 			outgoingMessages.add(m);
 		}
+		System.out.println("lock released");
 	}
 	
 	public void run() {
-		while(true) {
+		boolean running = true;
+		while(running) {
 			scheduler();
+			if (Thread.interrupted())
+				return;
 		}
 	}
 	
@@ -122,11 +126,14 @@ public class TFSMasterSwitchboard implements Runnable{
 				System.out.println("calling");
 				sendTraffic(outgoingMessages.remove(0));
 			}
-			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
-			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
-				System.out.println("Parsing message");
-			 	parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+			else {
+				incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
+				if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
+					System.out.println("Parsing message");
+			 		parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+				}
 			}
+			try { Thread.sleep(100); } catch(InterruptedException e) {}
 		} catch (ClassNotFoundException e){
 			 System.out.println("error");
 			 while (incomingMessages.isEmpty()){//REMOVE

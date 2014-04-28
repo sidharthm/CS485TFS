@@ -161,6 +161,7 @@ public class TFSMaster implements Runnable {
 				appendToFileWithSize(path,data);
 			}
 		}
+		try { Thread.sleep(1); } catch(InterruptedException e) {}
 	}
 	
 	public void addMessage(TFSMessage m) {
@@ -673,6 +674,7 @@ public class TFSMaster implements Runnable {
 					writeLogEntry("createDirectory",path,name,-1,-1);
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 				TFSMessage successMSG = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+				successMSG.setMessageType(TFSMessage.mType.SUCCESS);
 				for (int i = 0; i < switchboard.getClients().size(); i++){
 					successMSG.setDestination(switchboard.getClients().get(i));
 					sendMessage(successMSG);

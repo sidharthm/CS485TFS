@@ -21,6 +21,8 @@ public class TFSMasterSwitchboard implements Runnable{
 	Object mPrimeLock;
 	TFSMaster m2;
 	Object m2Lock;
+	Object m3Lock;
+	TFSMaster m3;
 	boolean initialized;
 	private String myName;//This contains the server's IP
 	private int portNumber = 8000;//This details the port to be used for trafficking of information
@@ -63,15 +65,19 @@ public class TFSMasterSwitchboard implements Runnable{
 		root = new TFSNode(false,null,-1,"root",0);
 		mPrimeLock = new Object();
 		m2Lock = new Object();
+		m3Lock = new Object();
 		mPrime = new TFSMaster(this,mPrimeLock);
 		m2 = new TFSMaster(this,m2Lock);
+		m3 = new TFSMaster(this,m3Lock);
 		masters.add(mPrime);
 		masters.add(m2);
 		mPrime.initializeStructure();
 		Thread thread2 = new Thread(mPrime);
 		Thread thread3 = new Thread(m2);
+		Thread thread4 = new Thread(m3);
 		thread2.start();
 		thread3.start();
+		thread4.start();
 		/*timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
 	        	for (int i = 0; i < chunkServers.size(); i++) {
@@ -256,12 +262,30 @@ public class TFSMasterSwitchboard implements Runnable{
 					}
 				}
 			}
+			if (m.getBytes() != null) {
+				TFSMessage mess = new TFSMessage(myName,TFSMessage.Type.MASTER);
+				mess.setMessageType(TFSMessage.mType.FILECONTENT);
+				mess.setBytes(m.getBytes());
+				for (int i = 0; i < clients.size(); i++) {
+					mess.setDestination(clients.get(i));
+					synchronized (outgoingMessages) {
+						outgoingMessages.add(mess);
+					}
+				}
+			}
 		}
 		else if (type == TFSMessage.mType.ERROR) {
 			notifyThread(m.getSource(),false);
 		}
+		else if (type == TFSMessage.mType.SIZEDAPPEND) {
+			m2.addMessage(m);
+		}
 		else {
-			mPrime.addMessage(m);
+			double r = Math.random();
+			if (r < 0.5)
+				mPrime.addMessage(m);
+			else
+				m3.addMessage(m);
 		}
 	}
 	

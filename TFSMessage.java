@@ -9,6 +9,7 @@ public class TFSMessage implements Serializable{
 	private Type sourceType;
 
 	String[] path;
+	long fileID;
 	String fileName;
 	byte[] raw_data;
 	int recursiveCreateNum;
@@ -270,5 +271,17 @@ public class TFSMessage implements Serializable{
 	*/
 	public void setReplicaNum(int r) {
 		replicas = r;
+	}
+	/**
+	 * Setter for file's handle 
+	*/
+	public void setFileID(long l){
+		fileID = l;
+	}
+	/**
+	 * Getter for file's handle
+	*/
+	public long getFileID(){
+		return fileID;
 	}
 }

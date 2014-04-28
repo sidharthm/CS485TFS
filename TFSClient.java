@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class TFSClient{
 	TFSMaster master;
@@ -14,6 +16,7 @@ public class TFSClient{
 	String location="C: ";
 	String chunk_ID=null;
 	String chunk_location=null;
+	Timer timer = new Timer();
 	int testone;
 	List<String> directories=new ArrayList<String>();
 	ArrayList<String[]> paths = new ArrayList<String[]>();
@@ -188,7 +191,17 @@ public class TFSClient{
 		else 
 			System.out.println("Invalid command");
 		sendMessageToMaster();
+		try{
 		listenForResponse();
+		}
+		catch (IOException e) {
+            System.out.println("Exception caught when trying to listen on port "
+                + portNumber + " or listening for a connection");
+            System.out.println(e.getMessage());
+        } catch (ClassNotFoundException e){
+			System.out.println("Class error found when trying to listen to port " + portNumber);
+			System.out.println(e.getMessage());
+		}
 		//if (flag for needing a server response) listenForResponse()
 		console();
 		return true;
@@ -602,30 +615,30 @@ public class TFSClient{
 	/**
 	 * Waiting for messages
 	 */
-	private void listenForResponse(){
+	private void listenForResponse()throws IOException, ClassNotFoundException{
 	/*Throw this method in before calling console again*/
 		System.out.println("Listening for response");
 		System.out.println(incomingMessage.getMessageType().toString());
-		try (
+		
 			ServerSocket serverSocket = new ServerSocket(portNumber);
+			serverSocket.setSoTimeout(10000);
 			Socket clientSocket = serverSocket.accept();
+			//clientSocket.setSoTimeout(10000);
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
-        ) {
+            
 			//we could use a timer to keep it from hanging indefintely
 			System.out.println(incomingMessage.getMessageType().toString());
 			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
 				incomingMessage.receiveMessage(in); //call readObject 
 			}
 			serverSocket.close();
-        } catch (IOException e) {
-            System.out.println("Exception caught when trying to listen on port "
-                + portNumber + " or listening for a connection");
-            System.out.println(e.getMessage());
-        } catch (ClassNotFoundException e){
-			System.out.println("Class error found when trying to listen to port " + portNumber);
-			System.out.println(e.getMessage());
+        //} 
+		if(incomingMessage.getMessageType() != TFSMessage.mType.NONE)
+			parseMessage(incomingMessage);
+		else{
+			System.out.println("Master cannot be reached");
+			console();
 		}
-		parseMessage(incomingMessage);
 	}
 	/**
 	 * Parsing messages

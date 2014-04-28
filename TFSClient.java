@@ -629,12 +629,16 @@ public class TFSClient{
 			//we could use a timer to keep it from hanging indefintely
 			System.out.println(incomingMessage.getMessageType().toString());
 			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
-				incomingMessage.receiveMessage(in); //call readObject
+				incomingMessage.receiveMessage(in); //call readObject 
 			}
 			serverSocket.close();
         //} 
 		if(incomingMessage.getMessageType() != TFSMessage.mType.NONE)
 			parseMessage(incomingMessage);
+		else if (incomingMessage.getMessageType() == TFSMessage.mType.ERROR)
+			System.out.println("There was an error");
+		else if (incomingMessage.getMessageType() == TFSMessage.mType.SUCCESS)
+			System.out.println("Transaction Successful");
 		else{
 			System.out.println("Master cannot be reached");
 			console();

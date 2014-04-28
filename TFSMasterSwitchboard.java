@@ -56,6 +56,7 @@ public class TFSMasterSwitchboard implements Runnable{
 		heartbeatMessage.setMessageType(TFSMessage.mType.HEARTBEAT);
 		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
 		chunkServers = new ArrayList<String>();
+		clients = new ArrayList<String>();
 		responses = new ArrayList<String>();
 		System.out.println("My ip is " + myName);
 		root = new TFSNode(false,null,-1,"root",0);
@@ -120,6 +121,7 @@ public class TFSMasterSwitchboard implements Runnable{
 			}
 			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
 			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
+				System.out.println("Parsing message");
 			 	parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
 			}
 		} catch (ClassNotFoundException e){
@@ -236,5 +238,9 @@ public class TFSMasterSwitchboard implements Runnable{
 		TFSMasterSwitchboard testBoard = new TFSMasterSwitchboard();
 		Thread thread = new Thread(testBoard);
 		thread.start();
+	}
+	
+	public ArrayList<String> getClients(){
+		return clients;
 	}
 }

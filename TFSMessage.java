@@ -16,7 +16,7 @@ public class TFSMessage implements Serializable{
 	int seekOffset;
 	int numFiles; 
 	String errorMessage;
-	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE,INITIALIZE,PRINT};
+	public enum mType{CREATEFILE,CREATEDIRECTORY,DELETE,HANDSHAKE,HEARTBEAT,HEARTBEATRESPONSE,RECURSIVECREATE,SEEK,SIZEDAPPEND,APPEND,READFILE,COUNTFILES,SUCCESS,ERROR,CREATEREPLICA,NONE,INITIALIZE,PRINT, NUMFILES};
 	private mType messageType;
 	int replicas;
 
@@ -137,6 +137,18 @@ public class TFSMessage implements Serializable{
 					
 				}
 				break;
+			case NUMFILES:
+				out.writeInt(numFiles);
+
+				if (sourceType == Type.CLIENT) {
+					out.writeObject(path);
+					out.writeObject(fileName);
+				}
+				else if (sourceType == Type.MASTER) {
+					
+				}
+				break;
+
 			case RECURSIVECREATE:
 				out.writeObject(fileName);
 				out.writeObject(path);
@@ -234,6 +246,17 @@ public class TFSMessage implements Serializable{
 				}
 				break;
 			case COUNTFILES:
+				if (sourceType == Type.CLIENT) {
+					path = (String[])in.readObject();
+					fileName = (String)in.readObject();
+				}
+				else if (sourceType == Type.MASTER) {
+					
+				}
+				break;
+			case NUMFILES:
+				numFiles = in.readInt();
+
 				if (sourceType == Type.CLIENT) {
 					path = (String[])in.readObject();
 					fileName = (String)in.readObject();

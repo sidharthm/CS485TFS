@@ -625,15 +625,36 @@ public class TFSMaster implements Runnable {
 		synchronized(directory) {
 		if (directory == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, directory does not exist.");
+			TFSMessage errorMSG = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+			errorMSG.setMessageType(TFSMessage.mType.ERROR);
+			for (int i = 0; i < switchboard.getClients().size(); i++){
+				
+				errorMSG.setDestination(switchboard.getClients().get(i));
+				sendMessage(errorMSG);
+			}
 			//client.error();
 			return false;
 		}
 		else if (directory == null && errorType == ErrorType.LOCKING) {
 			System.out.println("Master: Directory locked");
+			TFSMessage errorMSG = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+			errorMSG.setMessageType(TFSMessage.mType.ERROR);
+			for (int i = 0; i < switchboard.getClients().size(); i++){
+				
+				errorMSG.setDestination(switchboard.getClients().get(i));
+				
+				sendMessage(errorMSG);
+			}
 			return false;
 		}
 		else if (directory.getIsFile()) {
 			System.out.println("Master: Error, end of path is not a directory.");
+			TFSMessage errorMSG = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+			errorMSG.setMessageType(TFSMessage.mType.ERROR);
+			for (int i = 0; i < switchboard.getClients().size(); i++){
+				errorMSG.setDestination(switchboard.getClients().get(i));
+				sendMessage(errorMSG);
+			}
 			//client.error();
 			return false;
 		}
@@ -651,6 +672,11 @@ public class TFSMaster implements Runnable {
 				if (write)
 					writeLogEntry("createDirectory",path,name,-1,-1);
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+				TFSMessage successMSG = new TFSMessage(switchboard.getName(),TFSMessage.Type.MASTER);
+				for (int i = 0; i < switchboard.getClients().size(); i++){
+					successMSG.setDestination(switchboard.getClients().get(i));
+					sendMessage(successMSG);
+				}
 				//client.complete();
 				return true;
 			}

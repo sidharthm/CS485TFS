@@ -29,7 +29,9 @@ public class TFSMasterSwitchboard implements Runnable{
 	private List<TFSMessage> incomingMessages; // This Queue will store any incoming messages
 	private TFSNode root;
 	private ArrayList<String> chunkServers;
+	private ArrayList<String> responses;
 	Timer timer = new Timer();
+	Timer timer2 = new Timer();
 	
 	public TFSMasterSwitchboard() {
 		/*TEMPORARY: Master reads its own data from the config file so it has its own IP*/
@@ -53,10 +55,19 @@ public class TFSMasterSwitchboard implements Runnable{
 		mPrime = new TFSMaster(this,mPrimeLock);
 		m2 = new TFSMaster(this,m2Lock);
 		mPrime.initializeStructure();
-		timer.schedule(new TimerTask() {
-			
+		timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
 	            //TODO send heartbeat
+	        	responses.clear();
+	        	timer2.schedule(new TimerTask() {
+	    	        public void run() {
+	    	           for (int i = 0; i < chunkServers.size(); i++) {
+	    	        	   if (responses.indexOf(chunkServers.get(i)) == -1) {
+	    	        		   chunkServers.remove(i);
+	    	        	   }
+	    	           }
+	    	        }
+	    	    }, 0, 30000);
 	        }
 	    }, 0, 60000);
 		
@@ -171,8 +182,11 @@ public class TFSMasterSwitchboard implements Runnable{
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
 		TFSMessage.mType type = m.getMessageType();
-		if (type == TFSMessage.mType.HANDSHAKE || type == TFSMessage.mType.HEARTBEATRESPONSE){
+		if (type == TFSMessage.mType.HANDSHAKE){
 			m2.addMessage(m);
+		}
+		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {
+			responses.add(m.getSource());
 		}
 		else {
 			mPrime.addMessage(m);

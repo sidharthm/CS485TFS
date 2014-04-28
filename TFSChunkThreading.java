@@ -25,7 +25,7 @@ public class TFSChunkThreading implements Runnable{
 	
 	//read from config_chunk to initialize port and connections
 	String hostName;
-	int portNumber = 4444; //Default unless in stated in the config fle
+	int portNumber = 8000; //Default unless in stated in the config fle
 	
 	/**Constructor for TFSChunkThreading
 	* sets up all config files
@@ -86,7 +86,7 @@ public class TFSChunkThreading implements Runnable{
 			TFSMessage handshakeMessage = new TFSMessage(myIP,TFSMessage.Type.CHUNK);
 			handshakeMessage.setMessageType(TFSMessage.mType.HANDSHAKE);
 			handshakeMessage.setDestination(hostName);
-			sendTraffic(handshakeMessage);
+			handshakeMessage.sendMessage(out);
 			messageSocket.close();//Done, so let's close this
 			//This is to basically store in the hashmap whatever files are already in the folder
 			//retrieveFiles();
@@ -190,12 +190,17 @@ public class TFSChunkThreading implements Runnable{
 	private void scheduler() {
 		try {
 			if (!outgoingMessages.isEmpty()) {
+				System.out.println("calling");
 				sendTraffic(outgoingMessages.remove(0));
 			}
-			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
-			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
-			 	parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+			else {
+				incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
+				if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
+					System.out.println("Parsing message");
+			 		parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+				}
 			}
+			try { Thread.sleep(100); } catch(InterruptedException e) {}
 		} catch (ClassNotFoundException e){
 			 System.out.println("error");
 			 while (incomingMessages.isEmpty()){//REMOVE
@@ -254,8 +259,11 @@ public class TFSChunkThreading implements Runnable{
                 new ObjectOutputStream(clientSocket.getOutputStream()); //To send messages, probably not necessary here
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream()); //Receive messages from the client
         ) {
+			try { Thread.sleep(1000); } catch(InterruptedException e) {}
 			TFSMessage incomingMessage = new TFSMessage(); //create a new MessageObject, I think we should have the constructor set everything to null when it's initialized
-			incomingMessage.receiveMessage(in); //call readObject 
+			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
+				incomingMessage.receiveMessage(in); //call readObject 
+			}
 			if (incomingMessage.getMessageType() != TFSMessage.mType.NONE){ //if we received data
 				System.out.println("Received a message");
 				q.add(incomingMessage);

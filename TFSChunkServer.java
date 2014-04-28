@@ -115,6 +115,7 @@ public class TFSChunkServer implements Runnable{
 				break;
 			}		
 		}
+		try { Thread.sleep(10); } catch(InterruptedException e) {}
 	}
 /**
 	private void parseImpossible(String sender, String msg) {

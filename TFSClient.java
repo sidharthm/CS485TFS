@@ -476,6 +476,7 @@ public class TFSClient{
 	 */
 	private void createFile(){
 		String[]d=commands[1].split("/");
+		int r = Integer.parseInt(commands[2]);
 		String[]path = new String[d.length-1];
 		for (int i = 0; i < d.length-1; i++) {
 			path[i] = d[i];
@@ -484,6 +485,7 @@ public class TFSClient{
 		outgoingMessage.setMessageType(TFSMessage.mType.CREATEFILE);
 		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
+		outgoingMessage.setReplicaNum(r);
 		System.out.println("Create File");
 	}
 	//Messages

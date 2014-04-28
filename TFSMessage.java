@@ -186,6 +186,7 @@ public class TFSMessage implements Serializable{
 			case ERROR:
 				break;
 		}
+		out.close();
 	}
 	/**
 	 * Reading the objects based on message types

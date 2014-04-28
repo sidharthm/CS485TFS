@@ -60,6 +60,8 @@ public class TFSMasterSwitchboard implements Runnable{
 		responses = new ArrayList<String>();
 		System.out.println("My ip is " + myName);
 		root = new TFSNode(false,null,-1,"root",0);
+		mPrimeLock = new Object();
+		m2Lock = new Object();
 		mPrime = new TFSMaster(this,mPrimeLock);
 		m2 = new TFSMaster(this,m2Lock);
 		masters.add(mPrime);
@@ -230,16 +232,16 @@ public class TFSMasterSwitchboard implements Runnable{
 	
 	private void notifyThread(String IP, boolean success) {
 		for (int i = 0; i < masters.size(); i++) {
-			if (masters.get(i).getIP().equals(IP)) {
+			if (masters.get(i).getIP() != null && masters.get(i).getIP().equals(IP)) {
 				if (success) {
 					synchronized(masters.get(i).getLock()) {
-						notifyAll();
+						masters.get(i).getLock().notifyAll();
 					}
 				}
 				else {
 					masters.get(i).setKillProcess(true);
 					synchronized(masters.get(i).getLock()) {
-						notifyAll();
+						masters.get(i).getLock().notifyAll();
 					}
 				}
 			}

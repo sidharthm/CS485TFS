@@ -161,7 +161,7 @@ public class TFSMaster implements Runnable {
 				appendToFileWithSize(path,data);
 			}
 		}
-		try { Thread.sleep(1); } catch(InterruptedException e) {}
+		try { Thread.sleep(10); } catch(InterruptedException e) {}
 	}
 	
 	public void addMessage(TFSMessage m) {
@@ -517,7 +517,7 @@ public class TFSMaster implements Runnable {
 	public String[] chooseChunkServers(int n) {
 		synchronized (switchboard.getChunkServers()) {
 			ArrayList<String> shuffledList = new ArrayList<String>();
-			Collections.copy(shuffledList,switchboard.getChunkServers());
+			shuffledList = new ArrayList<String>(switchboard.getChunkServers());
 			Collections.shuffle(shuffledList);
 			String[] servers = new String[n];
 			for (int i = 0; i < servers.length; i++) {
@@ -586,7 +586,7 @@ public class TFSMaster implements Runnable {
 					synchronized(lock) {
 						try {
 							waitingIP = servers[i];
-							wait();
+							lock.wait();
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -595,6 +595,8 @@ public class TFSMaster implements Runnable {
 				if (!killProcess) {
 					try {
 						removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+						if (write)
+							writeLogEntry("createFileID",path,name,id);
 						//client.complete();
 						return true;
 					}
@@ -1142,6 +1144,7 @@ public class TFSMaster implements Runnable {
 			}
 			if (!killProcess) {
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+				writeLogEntry("createFile")
 				//client.complete();
 				return true;
 			}

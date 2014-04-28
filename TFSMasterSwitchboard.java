@@ -76,6 +76,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	        	for (int i = 0; i < chunkServers.size(); i++) {
 	        		heartbeatMessage.setDestination(chunkServers.get(i));
 	        		sendTraffic(heartbeatMessage);
+	        		System.out.println("Heartbeat sent");
 	        	}
 	        	responses.clear();
 	        	timer2.schedule(new TimerTask() {
@@ -218,6 +219,7 @@ public class TFSMasterSwitchboard implements Runnable{
 		}
 		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {
 			responses.add(m.getSource());
+			System.out.println("Heartbeat response");
 		}
 		else if (type == TFSMessage.mType.SUCCESS) {
 			notifyThread(m.getSource(),true);

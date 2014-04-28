@@ -22,7 +22,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	Object m2Lock;
 	boolean initialized;
 	private String myName;//This contains the server's IP
-	private int portNumber = 4444;//This details the port to be used for trafficking of information
+	private int portNumber = 8000;//This details the port to be used for trafficking of information
 	private Socket serverSocket; //this socket is used to communicate with the client
 	private List<TFSMessage> outgoingMessages; //This message is used to convey information to other entities in the system
 	private TFSMessage heartbeatMessage;//This message is used to ensure chunk servers are still operational
@@ -60,16 +60,25 @@ public class TFSMasterSwitchboard implements Runnable{
 		responses = new ArrayList<String>();
 		System.out.println("My ip is " + myName);
 		root = new TFSNode(false,null,-1,"root",0);
+		mPrimeLock = new Object();
+		m2Lock = new Object();
 		mPrime = new TFSMaster(this,mPrimeLock);
 		m2 = new TFSMaster(this,m2Lock);
 		masters.add(mPrime);
 		masters.add(m2);
 		mPrime.initializeStructure();
+		Thread thread2 = new Thread(mPrime);
+		Thread thread3 = new Thread(m2);
+		thread2.start();
+		thread3.start();
 		timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
 	        	for (int i = 0; i < chunkServers.size(); i++) {
 	        		heartbeatMessage.setDestination(chunkServers.get(i));
-	        		sendTraffic(heartbeatMessage);
+	        		synchronized (outgoingMessages) {
+	        			outgoingMessages.add(heartbeatMessage);
+	        		}
+	        		System.out.println("Heartbeat sent");
 	        	}
 	        	responses.clear();
 	        	timer2.schedule(new TimerTask() {
@@ -84,10 +93,6 @@ public class TFSMasterSwitchboard implements Runnable{
 	        }
 	    }, 0, 60000);
 		
-		Thread thread2 = new Thread(mPrime);
-		Thread thread3 = new Thread(m2);
-		thread2.start();
-		thread3.start();
 	}
 	
 	public TFSNode getRoot() {
@@ -107,11 +112,15 @@ public class TFSMasterSwitchboard implements Runnable{
 			System.out.println("added here" + outgoingMessages.size());
 			outgoingMessages.add(m);
 		}
+		System.out.println("lock released");
 	}
 	
 	public void run() {
-		while(true) {
+		boolean running = true;
+		while(running) {
 			scheduler();
+			if (Thread.interrupted())
+				return;
 		}
 	}
 	
@@ -122,11 +131,14 @@ public class TFSMasterSwitchboard implements Runnable{
 				System.out.println("calling");
 				sendTraffic(outgoingMessages.remove(0));
 			}
-			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
-			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
-				System.out.println("Parsing message");
-			 	parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+			else {
+				incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
+				if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
+					System.out.println("Parsing message");
+			 		parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
+				}
 			}
+			try { Thread.sleep(100); } catch(InterruptedException e) {}
 		} catch (ClassNotFoundException e){
 			 System.out.println("error");
 			 while (incomingMessages.isEmpty()){//REMOVE
@@ -209,9 +221,21 @@ public class TFSMasterSwitchboard implements Runnable{
 		}
 		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {
 			responses.add(m.getSource());
+			System.out.println("Heartbeat response");
 		}
 		else if (type == TFSMessage.mType.SUCCESS) {
 			notifyThread(m.getSource(),true);
+			if (m.getNumFiles() > -1) {
+				TFSMessage mess = new TFSMessage(myName,TFSMessage.Type.MASTER);
+				mess.setMessageType(TFSMessage.mType.NUMFILES);
+				mess.setNumFiles(m.getNumFiles());
+				for (int i = 0; i < clients.size(); i++) {
+					mess.setDestination(clients.get(i));
+					synchronized (outgoingMessages) {
+						outgoingMessages.add(mess);
+					}
+				}
+			}
 		}
 		else if (type == TFSMessage.mType.ERROR) {
 			notifyThread(m.getSource(),false);
@@ -223,16 +247,16 @@ public class TFSMasterSwitchboard implements Runnable{
 	
 	private void notifyThread(String IP, boolean success) {
 		for (int i = 0; i < masters.size(); i++) {
-			if (masters.get(i).getIP().equals(IP)) {
+			if (masters.get(i).getIP() != null && masters.get(i).getIP().equals(IP)) {
 				if (success) {
 					synchronized(masters.get(i).getLock()) {
-						notifyAll();
+						masters.get(i).getLock().notifyAll();
 					}
 				}
 				else {
 					masters.get(i).setKillProcess(true);
 					synchronized(masters.get(i).getLock()) {
-						notifyAll();
+						masters.get(i).getLock().notifyAll();
 					}
 				}
 			}

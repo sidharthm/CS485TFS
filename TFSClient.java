@@ -26,7 +26,7 @@ public class TFSClient{
 	
 	String hostName; //Load this from a file, it stores the master server's IP
 	String myName; //This stores the server's own IP so that it can attach that information to messages
-	int portNumber = 4444; //Change this if you want to communicate on a different port
+	int portNumber = 8000; //Change this if you want to communicate on a different port
 	Socket clientMessageSocket; //This is the socket the client uses to contact the master
 	
 	TFSMessage outgoingMessage;
@@ -140,11 +140,11 @@ public class TFSClient{
 			done=false;
 		}
 		else if(commands[0].equalsIgnoreCase("Unit1")){
-			if(commands.length == 2)
+			if(commands.length == 3)
 				unitOne();
 		}
 		else if(commands[0].equalsIgnoreCase("Unit2")){
-			if(commands.length == 3)
+			if(commands.length == 4)
 				unitTwo();
 		}
 		else if(commands[0].equalsIgnoreCase("Unit3")){
@@ -226,7 +226,12 @@ public class TFSClient{
 			strings.add(""+1);
 			Collections.reverse(strings);
 			String[] path = strings.toArray(new String[strings.size()]);
+			for (int l = 0; l < path.length; l++) {
+				System.out.println(path[l]);
+			}
 			makeDirectory(path);
+			sendMessageToMaster();
+			try { Thread.sleep(1000); } catch(InterruptedException e) {}
 		}
 	}
 	/**
@@ -235,12 +240,19 @@ public class TFSClient{
 	 */
 	private void unitTwo(){
 		String[] d=commands[1].split("/");
+		String[] path = new String[d.length-1];
+		for (int i = 0; i < path.length; i++) {
+			path[i] = d[i];
+		}
 		int num = Integer.parseInt(commands[2]);
+		int replicas = Integer.parseInt(commands[3]);
 		System.out.println("Client: Sending createFiles request to Master.");
 		//master.recursiveCreateFileInitial(d, true, num);//HERE
 		outgoingMessage.setMessageType(TFSMessage.mType.RECURSIVECREATE);
-		outgoingMessage.setPath(d);
+		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
+		outgoingMessage.setFileNum(num);
+		outgoingMessage.setReplicaNum(replicas);
 	}
 	/**
 	 * Runs the third test: Delete a hierarchical directory structure including the files in those directories.
@@ -256,6 +268,7 @@ public class TFSClient{
 		//master.recursiveDelete(delete,true);
 		outgoingMessage.setMessageType(TFSMessage.mType.DELETE);
 		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(delete[delete.length-1]);
 		//outgoingMessage.setFileName(delete[delete.length-1]);
 	}
 	/**
@@ -341,7 +354,7 @@ public class TFSClient{
 			f.read(b);
 			System.out.println("Client: Sending appendToFile request to Master.");
 			//master.appendToFileWithSize(path,b);//HERE
-			outgoingMessage.setMessageType(TFSMessage.mType.APPEND);
+			outgoingMessage.setMessageType(TFSMessage.mType.SIZEDAPPEND);
 			outgoingMessage.setPath(path);
 			outgoingMessage.setBytes(b);
 		}
@@ -465,9 +478,14 @@ public class TFSClient{
 	 */
 	private void remove(){
 		String[]d = commands[1].split("/");
+		String[]path = new String[d.length-1];
+		for (int i = 0; i < path.length; i++) {
+			path[i] = d[i];
+		}
 		//master.recursiveDelete(d, true);
 		outgoingMessage.setMessageType(TFSMessage.mType.DELETE);
-		outgoingMessage.setPath(d);
+		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(d[d.length-1]);
 		//master.delete(d, this);
 	}
 	/**
@@ -476,6 +494,7 @@ public class TFSClient{
 	 */
 	private void createFile(){
 		String[]d=commands[1].split("/");
+		int r = Integer.parseInt(commands[2]);
 		String[]path = new String[d.length-1];
 		for (int i = 0; i < d.length-1; i++) {
 			path[i] = d[i];
@@ -484,6 +503,7 @@ public class TFSClient{
 		outgoingMessage.setMessageType(TFSMessage.mType.CREATEFILE);
 		outgoingMessage.setPath(path);
 		outgoingMessage.setFileName(d[d.length-1]);
+		outgoingMessage.setReplicaNum(r);
 		System.out.println("Create File");
 	}
 	//Messages
@@ -604,6 +624,7 @@ public class TFSClient{
             ObjectOutputStream out = new ObjectOutputStream(messageSocket.getOutputStream()); //allows us to write objects over the socket
         ) {
 			outgoingMessage.sendMessage(out); //send the message to the server
+			try { Thread.sleep(100); } catch(InterruptedException e) {}
         } catch (UnknownHostException e) {
             System.err.println("Don't know about host " + hostName);
 			Error = true;
@@ -618,6 +639,7 @@ public class TFSClient{
 	private void listenForResponse()throws IOException, ClassNotFoundException{
 	/*Throw this method in before calling console again*/
 		System.out.println("Listening for response");
+		try { Thread.sleep(1000); } catch(InterruptedException e) {}
 		System.out.println(incomingMessage.getMessageType().toString());
 		
 			ServerSocket serverSocket = new ServerSocket(portNumber);

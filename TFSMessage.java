@@ -67,7 +67,9 @@ public class TFSMessage implements Serializable{
 				break;
 			case CREATEFILE:
 				if (sourceType == Type.CLIENT) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeObject(fileName);
 					out.writeInt(replicas);
 				}
@@ -77,7 +79,9 @@ public class TFSMessage implements Serializable{
 				break;
 			case DELETE:
 				if (sourceType == Type.CLIENT) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeObject(fileName);
 				}
 				else if (sourceType == Type.MASTER) {
@@ -87,19 +91,25 @@ public class TFSMessage implements Serializable{
 			case SEEK:
 				if (sourceType == Type.CLIENT) {
 					out.writeObject(fileName);
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeInt(seekOffset);
 					out.writeObject(raw_data);
 				}
 				else if (sourceType == Type.MASTER) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeInt(seekOffset);
 					out.writeObject(raw_data);
 				}
 				break;
 			case SIZEDAPPEND:
 				if (sourceType == Type.CLIENT) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeObject(fileName);
 					out.writeObject(raw_data);
 				}
@@ -110,7 +120,9 @@ public class TFSMessage implements Serializable{
 				break;
 			case APPEND:
 				if (sourceType == Type.CLIENT) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeObject(fileName);
 					out.writeObject(raw_data);
 				}
@@ -123,17 +135,21 @@ public class TFSMessage implements Serializable{
 				break;
 			case READFILE:
 				if (sourceType == Type.CLIENT) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeObject(fileName);
 					out.writeObject(raw_data);
 				}
 				else if (sourceType == Type.MASTER) {
-					
+					out.writeLong(fileID);
 				}
 				break;
 			case COUNTFILES:
 				if (sourceType == Type.CLIENT) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeObject(fileName);
 				}
 				else if (sourceType == Type.MASTER) {
@@ -144,19 +160,22 @@ public class TFSMessage implements Serializable{
 				out.writeInt(numFiles);
 
 				if (sourceType == Type.CLIENT) {
-					out.writeObject(path);
+					out.writeInt(path.length);
+					for (int i = 0; i < path.length; i++)
+						out.writeObject(path[i]);
 					out.writeObject(fileName);
 				}
 				else if (sourceType == Type.MASTER) {
-					
 				}
 				break;
 
 			case RECURSIVECREATE:
 				out.writeObject(fileName);
-				out.writeObject(path);
+				out.writeInt(path.length);
+				for (int i = 0; i < path.length; i++)
+					out.writeObject(path[i]);
 				out.writeInt(replicas);
-				out.writeInt(numFiles);
+				out.writeInt(recursiveCreateNum);
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
 				//Check Test 3
@@ -167,6 +186,7 @@ public class TFSMessage implements Serializable{
 			case ERROR:
 				break;
 		}
+		out.close();
 	}
 	/**
 	 * Reading the objects based on message types
@@ -177,10 +197,11 @@ public class TFSMessage implements Serializable{
 		messageSource = (String)in.readObject();
 		sourceType = (Type)in.readObject();
 		messageType = (mType)in.readObject();
+		int length = 0;
 		switch (messageType){
 			case CREATEDIRECTORY:
 				fileName = (String)in.readObject();
-				int length = in.readInt();
+				length = in.readInt();
 				path = new String[length];
 				for (int i = 0; i < length; i++)
 					path[i] = (String)in.readObject();
@@ -188,7 +209,10 @@ public class TFSMessage implements Serializable{
 				break;
 			case CREATEFILE:
 				if (sourceType == Type.CLIENT) {
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					fileName = (String)in.readObject();
 					replicas = (int)in.readInt();
 				}
@@ -198,7 +222,10 @@ public class TFSMessage implements Serializable{
 				break;
 			case DELETE:
 				if (sourceType == Type.CLIENT) {
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					fileName = (String)in.readObject();
 				}
 				else if (sourceType == Type.MASTER) {
@@ -208,7 +235,10 @@ public class TFSMessage implements Serializable{
 			case SEEK:
 				if (sourceType == Type.CLIENT) {
 					fileName = (String)in.readObject();
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					seekOffset = (int)in.readInt();
 					raw_data = (byte[])in.readObject();
 				}
@@ -220,7 +250,10 @@ public class TFSMessage implements Serializable{
 				break;
 			case SIZEDAPPEND:
 				if (sourceType == Type.CLIENT) {
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					fileName = (String)in.readObject();
 					raw_data = (byte[])in.readObject();
 				}
@@ -231,7 +264,10 @@ public class TFSMessage implements Serializable{
 				break;
 			case APPEND:
 				if (sourceType == Type.CLIENT) {
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					fileName = (String)in.readObject();
 					raw_data = (byte[])in.readObject();
 				}
@@ -244,17 +280,23 @@ public class TFSMessage implements Serializable{
 				break;
 			case READFILE:
 				if (sourceType == Type.CLIENT) {
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					fileName = (String)in.readObject();
 					raw_data = (byte[])in.readObject();
 				}
 				else if (sourceType == Type.MASTER) {
-					
+					fileID = in.readLong();
 				}
 				break;
 			case COUNTFILES:
 				if (sourceType == Type.CLIENT) {
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					fileName = (String)in.readObject();
 				}
 				else if (sourceType == Type.MASTER) {
@@ -265,7 +307,10 @@ public class TFSMessage implements Serializable{
 				numFiles = in.readInt();
 
 				if (sourceType == Type.CLIENT) {
-					path = (String[])in.readObject();
+					length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 					fileName = (String)in.readObject();
 				}
 				else if (sourceType == Type.MASTER) {
@@ -274,9 +319,12 @@ public class TFSMessage implements Serializable{
 				break;
 			case RECURSIVECREATE:
 				fileName = (String)in.readObject();
-				path = (String[])in.readObject();
+				length = in.readInt();
+					path = new String[length];
+					for (int i = 0; i < length; i++)
+						path[i] = (String)in.readObject();
 				replicas = in.readInt();
-				numFiles = in.readInt();
+				recursiveCreateNum = in.readInt();
 				break;
 			/*SUCCESS,ERROR,CREATEREPLICA*/
 				//Check Test 3

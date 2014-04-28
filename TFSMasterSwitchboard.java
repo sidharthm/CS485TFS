@@ -118,6 +118,7 @@ public class TFSMasterSwitchboard implements Runnable{
 			}
 			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
 			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
+				System.out.println("Parsing message");
 			 	parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
 			}
 		} catch (ClassNotFoundException e){
@@ -192,7 +193,7 @@ public class TFSMasterSwitchboard implements Runnable{
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
 		TFSMessage.mType type = m.getMessageType();
-		if (type == TFSMessage.mType.HANDSHAKE){
+		if (type == TFSMessage.mType.HANDSHAKE && m.getSourceType() == TFSMessage.Type.CHUNK){
 			chunkServers.add(m.getSource());
 		}
 		else if (type == TFSMessage.mType.HEARTBEATRESPONSE) {

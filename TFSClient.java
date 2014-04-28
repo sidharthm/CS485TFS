@@ -614,7 +614,6 @@ public class TFSClient{
 			//we could use a timer to keep it from hanging indefintely
 			System.out.println(incomingMessage.getMessageType().toString());
 			while(incomingMessage.getMessageType() == TFSMessage.mType.NONE){
-				System.out.print("l");
 				incomingMessage.receiveMessage(in); //call readObject 
 			}
 			serverSocket.close();

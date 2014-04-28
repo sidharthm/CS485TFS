@@ -596,7 +596,7 @@ public class TFSMaster implements Runnable {
 					try {
 						removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 						if (write)
-							writeLogEntry("createFileID",path,name,id);
+							writeLogEntry("createFileID",path,name,id,replicas);
 						//client.complete();
 						return true;
 					}
@@ -1144,7 +1144,6 @@ public class TFSMaster implements Runnable {
 			}
 			if (!killProcess) {
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-				writeLogEntry("createFile")
 				//client.complete();
 				return true;
 			}

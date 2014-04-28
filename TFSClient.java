@@ -465,9 +465,14 @@ public class TFSClient{
 	 */
 	private void remove(){
 		String[]d = commands[1].split("/");
+		String[]path = new String[d.length-1];
+		for (int i = 0; i < path.length; i++) {
+			path[i] = d[i];
+		}
 		//master.recursiveDelete(d, true);
 		outgoingMessage.setMessageType(TFSMessage.mType.DELETE);
-		outgoingMessage.setPath(d);
+		outgoingMessage.setPath(path);
+		outgoingMessage.setFileName(d[d.length-1]);
 		//master.delete(d, this);
 	}
 	/**

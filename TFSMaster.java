@@ -179,8 +179,8 @@ public class TFSMaster implements Runnable {
 	 * @return the TFSNode root
 	 */
 	public TFSNode getRoot() {
-		//return switchboard.getRoot();
-		return client.root;
+		return switchboard.getRoot();
+		//return client.root;
 	}
 	
 	public void initializeStructure() {

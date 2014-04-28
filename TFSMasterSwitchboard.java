@@ -218,13 +218,13 @@ public class TFSMasterSwitchboard implements Runnable{
 			if (masters.get(i).getIP().equals(IP)) {
 				if (success) {
 					synchronized(masters.get(i).getLock()) {
-						notify();
+						notifyAll();
 					}
 				}
 				else {
 					masters.get(i).setKillProcess(true);
 					synchronized(masters.get(i).getLock()) {
-						notify();
+						notifyAll();
 					}
 				}
 			}

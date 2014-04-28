@@ -1,6 +1,8 @@
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
 
 public class TFSMaster implements Runnable {
@@ -19,16 +21,25 @@ public class TFSMaster implements Runnable {
 	
 	TFSMasterSwitchboard switchboard;
 	
+	boolean killProcess = false;
 	
+	public enum ErrorType { PATH, LOCKING; }
 	
-	private ArrayList<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	ErrorType errorType;
+	
+	private List<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	
+	Object lock;
+	
+	String waitingIP;
 	
 
-	public TFSMaster(TFSMasterSwitchboard s){
+	public TFSMaster(TFSMasterSwitchboard s, Object l){
 		/*Set up all messages with the appropriate initialization*/
-		incomingMessages = new ArrayList<TFSMessage>();
+		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
 		//root = new TFSNode(false,null,-1,"root");
 		switchboard = s;
+		lock = l;
 	}
 
 	/**
@@ -44,8 +55,17 @@ public class TFSMaster implements Runnable {
 	}
 	
 	public void run() {
+		while (true) {
+			scheduler();
+		}
+	}
+	
+	public void scheduler() {
 		if (incomingMessages.size() > 0) {
-			TFSMessage message = incomingMessages.remove(0);
+			TFSMessage message;
+			synchronized(incomingMessages) {
+				message = incomingMessages.remove(0);
+			}
 			TFSMessage.mType type = message.getMessageType();
 			if (type == TFSMessage.mType.APPEND) {
 				String p2 = message.getFileName();
@@ -76,7 +96,8 @@ public class TFSMaster implements Runnable {
 			else if (type == TFSMessage.mType.CREATEFILE) {
 				String p2 = message.getFileName();
 				String[] p1 = message.getPath();
-				createFileNoID(p1,p2,true,true);
+				int replicas = message.getReplicaNum();
+				createFileNoID(p1,p2,true,true,replicas);
 			}
 			else if (type == TFSMessage.mType.CREATEREPLICA) {
 				
@@ -116,7 +137,8 @@ public class TFSMaster implements Runnable {
 				}
 				path[p1.length] = p2;
 				int num = message.getFileNum();
-				recursiveCreateFileInitial(path,true,num);
+				int replicas = message.getReplicaNum();
+				recursiveCreateFileInitial(path,true,num,replicas);
 			}
 			else if (type == TFSMessage.mType.SEEK) {
 				String p2 = message.getFileName();
@@ -148,13 +170,17 @@ public class TFSMaster implements Runnable {
 		incomingMessages.add(m);
 	}
 	
+	public void sendMessage(TFSMessage m) {
+		switchboard.addOutgoingMessage(m);
+	}
+	
 	/**
 	 * Getter method for the root
 	 * @return the TFSNode root
 	 */
 	public TFSNode getRoot() {
-		return switchboard.getRoot();
-		//return client.root;
+		//return switchboard.getRoot();
+		return client.root;
 	}
 	
 	public void initializeStructure() {
@@ -212,6 +238,7 @@ public class TFSMaster implements Runnable {
 					removeLocks(p3,0,getRoot(),first,first);
 					removeLocks(p3,0,getRoot(),second,second);
 				}
+				errorType = ErrorType.LOCKING;
 				return null;
 			}
 		}
@@ -244,6 +271,7 @@ public class TFSMaster implements Runnable {
 							removeLocks(p3,0,getRoot(),first,first);
 							removeLocks(p3,0,getRoot(),second,second);
 						}
+						errorType = ErrorType.LOCKING;
 					}
 					break;
 				}
@@ -269,6 +297,7 @@ public class TFSMaster implements Runnable {
 					removeLocks(p3,0,getRoot(),first,first);
 					removeLocks(p3,0,getRoot(),second,second);
 				}
+				errorType = ErrorType.PATH;
 				return null;
 			}
 		}
@@ -312,7 +341,55 @@ public class TFSMaster implements Runnable {
 		}
 		}
 	}
+
+	public void removeReplicas(TFSNode node) {
+		synchronized(node) {
+			if (node.getIsFile()) {
+				for (int i = 0; i < node.getReplicas().size(); i++) {
+					if (switchboard.getChunkServers().indexOf(node.getReplicas().get(i)) == -1) {
+						node.getReplicas().remove(i);
+					}
+				}
+			}
+			else {
+				for (int i = 0; i < node.getChildren().size(); i++) {
+					removeReplicas(node.getChildren().get(i));
+				}
+			}
+		}
+	}
 	
+	public void addReplica(String IP, TFSNode node) {
+		synchronized(node) {
+			if (node.getIsFile()) {
+				if (node.getReplicas().size() < node.getDesiredReplicas()) {
+					//TODO send file creation message
+					/*
+					synchronized(lock) {
+						try {
+							waitingIP = IP;
+							wait();
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+					}
+					*/
+					if (!killProcess) {
+						node.getReplicas().add(IP);
+					}
+					else {
+						killProcess = false;
+						return;
+					}
+				}
+			}
+			else {
+				for (int i = 0; i < node.getChildren().size(); i++) {
+					addReplica(IP,node.getChildren().get(i));
+				}
+			}
+		}
+	}
 	/*
 	This method was written before but is now obsolete. Commented out just in case
 	public boolean recursiveCreateFile(String[] path, String name, boolean write) {
@@ -365,13 +442,26 @@ public class TFSMaster implements Runnable {
 	 * @param oldID The id for the file we are creating
 	 * @return True if file created. False if path is incorrect or file already exists
 	 */
-	public boolean createFileWithID(String[] path, String name, boolean write, long oldID) {
+	public boolean createFileWithID(String[] path, String name, boolean write, long oldID, int replicas) {
+		String[] servers;
+		synchronized (switchboard.getChunkServers()) {
+			if (replicas > switchboard.getChunkServers().size()) {
+				return false;
+			}
+			else {
+				servers = chooseChunkServers(replicas);
+			}
+		}
 		//Find the correct node
 		TFSNode directory = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(directory) {
 		//Path does not exist
-		if (directory == null) {
+		if (directory == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
+			return false;
+		}
+		else if (directory == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		//End of path is a file not directory
@@ -392,14 +482,24 @@ public class TFSMaster implements Runnable {
 			//File wasn't found. Create it
 			if (cont) {
 				long id = oldID;
-				TFSNode newNode = new TFSNode(true,directory,id,name);
+				TFSNode newNode = new TFSNode(true,directory,id,name,replicas);
 				directory.getChildren().add(newNode);
+				/*
+				synchronized(lock) {
+					try {
+						waitingIP = IP;
+						wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+				*/
 				try {
 					File file = new File("local/" + id);
 					file.createNewFile();
 					//Because write is always false, we should never be rewriting to the log entry
 					if (write)
-						writeLogEntry("createFileID",path,name,id);
+						writeLogEntry("createFileID",path,name,id,replicas);
 					removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 				}
 				catch (Exception e) {
@@ -411,6 +511,19 @@ public class TFSMaster implements Runnable {
 		}
 	}
 	
+	public String[] chooseChunkServers(int n) {
+		synchronized (switchboard.getChunkServers()) {
+			ArrayList<String> shuffledList = new ArrayList<String>();
+			Collections.copy(shuffledList,switchboard.getChunkServers());
+			Collections.shuffle(shuffledList);
+			String[] servers = new String[n];
+			for (int i = 0; i < servers.length; i++) {
+				servers[i] = shuffledList.get(i);
+			}
+			return servers;
+		}
+	}
+	
 	/**
 	 * 
 	 * @param path
@@ -419,13 +532,26 @@ public class TFSMaster implements Runnable {
 	 * @param error
 	 * @return
 	 */
-	public boolean createFileNoID(String[] path, String name, boolean write, boolean error) {
+	public boolean createFileNoID(String[] path, String name, boolean write, boolean error, int replicas) {
+		String[] servers;
+		synchronized (switchboard.getChunkServers()) {
+			if (replicas > switchboard.getChunkServers().size()) {
+				return false;
+			}
+			else {
+				servers = chooseChunkServers(replicas);
+			}
+		}
 		TFSNode directory = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(directory) {
-		if (directory == null) {
+		if (directory == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			if (error)
 				client.error();
+			return false;
+		}
+		else if (directory == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (directory.getIsFile()) {
@@ -445,20 +571,36 @@ public class TFSMaster implements Runnable {
 				}
 			}
 			if (cont) {
-				long id = System.currentTimeMillis();;
-				TFSNode newNode = new TFSNode(true,directory,id,name);
+				long id = System.currentTimeMillis();
+				TFSNode newNode = new TFSNode(true,directory,id,name,replicas);
 				directory.getChildren().add(newNode);
-				try {
-					File file = new File("local/" + id);
-					file.createNewFile();
-					if (write)
-						writeLogEntry("createFileID",path,name,id);
-					removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
-					client.complete();
-					return true;
+				/*
+				synchronized(lock) {
+					try {
+						waitingIP = IP;
+						wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
-				catch (Exception e) {
-					e.printStackTrace();
+				*/
+				if (!killProcess) {
+					try {
+						File file = new File("local/" + id);
+						file.createNewFile();
+						if (write)
+							writeLogEntry("createFileID",path,name,id,replicas);
+						removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+						client.complete();
+						return true;
+					}
+					catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				else {
+					removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
+					killProcess = false;
 				}
 			}
 			if (error)
@@ -478,9 +620,13 @@ public class TFSMaster implements Runnable {
 	public boolean createDirectory(String[] path, String name, boolean write) {
 		TFSNode directory = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(directory) {
-		if (directory == null) {
-			System.out.println("Master: Error, directory unaccessible.");
+		if (directory == null && errorType == ErrorType.PATH) {
+			System.out.println("Master: Error, directory does not exist.");
 			client.error();
+			return false;
+		}
+		else if (directory == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (directory.getIsFile()) {
@@ -497,10 +643,10 @@ public class TFSMaster implements Runnable {
 				}
 			}
 			if (cont) {
-				TFSNode newNode = new TFSNode(false,directory,0,name);
+				TFSNode newNode = new TFSNode(false,directory,0,name,0);
 				directory.getChildren().add(newNode);
 				if (write)
-					writeLogEntry("createDirectory",path,name,-1);
+					writeLogEntry("createDirectory",path,name,-1,-1);
 				removeLocks(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"));
 				client.complete();
 				return true;
@@ -520,8 +666,12 @@ public class TFSMaster implements Runnable {
 	public boolean deleteFile(String[] path, boolean write) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists,");
+			return false;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (!file.getIsFile()) {
@@ -529,15 +679,32 @@ public class TFSMaster implements Runnable {
 			return false;
 		}
 		else {
-			deleteFileNode(file);
-			if (write)
-				writeLogEntry("deleteFile",path,null,-1);
+			/*
+			synchronized(lock) {
+				try {
+					waitingIP = IP;
+					wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			*/
 			String[] path2 = new String[path.length-1];
 			for (int i = 0; i < path2.length; i++) {
 				path2[i] = path[i];
 			}
-			removeLocks(path2,0,getRoot(),new NodeLock("IX"),new NodeLock("IX"));
-			return true;
+			if (!killProcess) {
+				deleteFileNode(file);
+				if (write)
+					writeLogEntry("deleteFile",path,null,-1,-1);
+				removeLocks(path2,0,getRoot(),new NodeLock("IX"),new NodeLock("IX"));
+				return true;
+			}
+			else {
+				removeLocks(path2,0,getRoot(),new NodeLock("IX"),new NodeLock("IX"));
+				killProcess = false;
+				return false;
+			}
 		}
 		}
 	}
@@ -545,8 +712,12 @@ public class TFSMaster implements Runnable {
 	public boolean deleteDirectory(String[] path, boolean write) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists,");
+			return false;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (file.getIsFile()) {
@@ -556,7 +727,7 @@ public class TFSMaster implements Runnable {
 		else {
 			deleteDirectoryNode(file);
 			if (write)
-				writeLogEntry("deleteDirectory",path,null,-1);
+				writeLogEntry("deleteDirectory",path,null,-1,-1);
 			String[] path2 = new String[path.length-1];
 			for (int i = 0; i < path2.length; i++) {
 				path2[i] = path[i];
@@ -599,10 +770,7 @@ public class TFSMaster implements Runnable {
 		}
 	}
 	
-	/**
-	 * 
-	 * @param node
-	 */
+	/*
 	public void recursiveDeleteFromNode(TFSNode node) {
 		synchronized(node) {
 		for (int i = 0; i < node.getChildren().size(); i++) {
@@ -626,6 +794,7 @@ public class TFSMaster implements Runnable {
 		}
 		}
 	}
+	*/
 	
 	/**
 	 * 
@@ -634,12 +803,16 @@ public class TFSMaster implements Runnable {
 	 * @param num
 	 * @return
 	 */
-	public boolean recursiveCreateFileInitial(String[] path, boolean write, int num) {
+	public boolean recursiveCreateFileInitial(String[] path, boolean write, int num, int replicas) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),false);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			client.error();
+			return false;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (file.getIsFile()) {
@@ -648,7 +821,7 @@ public class TFSMaster implements Runnable {
 			return false;
 		}
 		else {
-			recursiveCreateFile(path, file, write, num);
+			recursiveCreateFile(path, file, write, num, replicas);
 			//if (write)
 				//writeLogEntry("recursiveCreate",path,null,(long)num);
 			client.complete();
@@ -660,9 +833,13 @@ public class TFSMaster implements Runnable {
 	public boolean recursiveDeleteInitial(String[] path, boolean write) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),false);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			client.error();
+			return false;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else {
@@ -677,24 +854,24 @@ public class TFSMaster implements Runnable {
 	
 	public void recursiveDeleteFile(String[] path, TFSNode node, boolean write) {
 		synchronized(node) {
-				String[] path2 = new String[path.length+1];
-				for (int i = 0; i < path.length; i++) {
-					path2[i] = path[i];
-				}
-				for (int i = 0; i < node.getChildren().size(); i++) {
-					synchronized(node.getChildren().get(i)) {
+			String[] path2 = new String[path.length+1];
+			for (int i = 0; i < path.length; i++) {
+				path2[i] = path[i];
+			}
+			for (int i = 0; i < node.getChildren().size(); i++) {
+				synchronized(node.getChildren().get(i)) {
 					TFSNode newNode = node.getChildren().get(i);
 					path2[path2.length-1] = newNode.getName();
 					recursiveDeleteFile(path2, newNode, true);
 					i = i-1;
-					}
 				}
-				if (node.getIsFile()) {
-					deleteFile(path,true);
-				}
-				else {
-					deleteDirectory(path,true);
-				}
+			}
+			if (node.getIsFile()) {
+				deleteFile(path,true);
+			}
+			else {
+				deleteDirectory(path,true);
+			}
 		}
 	}
 	
@@ -705,7 +882,7 @@ public class TFSMaster implements Runnable {
 	 * @param write
 	 * @param num
 	 */
-	public void recursiveCreateFile(String[] path, TFSNode node, boolean write, int num) {
+	public void recursiveCreateFile(String[] path, TFSNode node, boolean write, int num, int replicas) {
 		synchronized(node) {
 		String[] path2 = new String[path.length+1];
 		for (int i = 0; i < path.length; i++) {
@@ -716,14 +893,14 @@ public class TFSMaster implements Runnable {
 			if (!newNode.getIsFile()) {
 				synchronized(node.getChildren().get(i)) {
 				path2[path2.length-1] = newNode.getName();
-				recursiveCreateFile(path2, newNode, true, num);
+				recursiveCreateFile(path2, newNode, true, num, replicas);
 				}
 			}
 		}
 		for (int i = 0; i < num; i++) {
 			int j = i+1;
 			String name = "File" + j;
-			createFileNoID(path,name,true,true);
+			createFileNoID(path,name,true,true,replicas);
 			try {
 				Thread.sleep(1);
 			}
@@ -733,13 +910,7 @@ public class TFSMaster implements Runnable {
 		}
 		}
 	}
-	
-	/**
-	 * 
-	 * @param path
-	 * @param write
-	 * @return
-	 */
+	/*
 	public boolean recursiveDelete(String[] path, boolean write) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("IX"),true);
 		synchronized(file) {
@@ -764,7 +935,7 @@ public class TFSMaster implements Runnable {
 			file.removeLock(new NodeLock("IX"));
 			recursiveDeleteFromNode(file);
 			if (write)
-				writeLogEntry("recursiveDelete",path,null,-1);
+				writeLogEntry("recursiveDelete",path,null,-1,-1);
 			String[] path2 = new String[path.length-1];
 			for (int i = 0; i < path2.length; i++) {
 				path2[i] = path[i];
@@ -775,6 +946,7 @@ public class TFSMaster implements Runnable {
 		}
 		}
 	}
+	*/
 	
 	/**
 	 * 
@@ -786,9 +958,13 @@ public class TFSMaster implements Runnable {
 	public boolean seekAndWrite(String[] path, int offset, byte[] bytes) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			client.error();
+			return false;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (!file.getIsFile()) {
@@ -826,9 +1002,13 @@ public class TFSMaster implements Runnable {
 	public boolean appendToFileWithSize(String[] path, byte[] bytes) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			client.error();
+			return false;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (!file.getIsFile()) {
@@ -868,9 +1048,13 @@ public class TFSMaster implements Runnable {
 	public boolean appendToFileNoSize(String[] path, byte[] bytes) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IX"),new NodeLock("X"),true);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			client.error();
+			return false;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return false;
 		}
 		else if (!file.getIsFile()) {
@@ -907,9 +1091,13 @@ public class TFSMaster implements Runnable {
 	public byte[] readFileNoSize(String[] path) {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"),true);
 		synchronized(file) {
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			client.error();
+			return null;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return null;
 		}
 		else if (!file.getIsFile()) {
@@ -946,9 +1134,13 @@ public class TFSMaster implements Runnable {
 		TFSNode file = searchTree(path,0,getRoot(),new NodeLock("IS"),new NodeLock("S"),true);
 		synchronized(file) {
 		int count = 0;
-		if (file == null) {
+		if (file == null && errorType == ErrorType.PATH) {
 			System.out.println("Master: Error, no directory exists.");
 			client.error();
+			return -1;
+		}
+		else if (file == null && errorType == ErrorType.LOCKING) {
+			System.out.println("Master: Directory locked");
 			return -1;
 		}
 		else if (!file.getIsFile()) {
@@ -987,14 +1179,14 @@ public class TFSMaster implements Runnable {
 		synchronized(node) {
 		for (int i = 0; i < node.getChildren().size(); i++) {
 			if (node.getChildren().get(i).getIsFile()) {
-				System.out.println("File: " + node.getChildren().get(i).getName() + " (Locks: " + node.getChildren().get(i).printLock() + ")");
+				System.out.println("File: " + node.getChildren().get(i).getName() + " (Locks: " + node.getChildren().get(i).printLock() + ")" + " (Replicas: " + node.getChildren().get(i).printReplicas() + ")");
 			}
 			else {
 				printTree(node.getChildren().get(i));
 			}
 		}
 		if(node.getIsFile()) {
-			System.out.println("File: " + node.getName() + " (Locks: " + node.printLock() + ")");
+			System.out.println("File: " + node.getName() + " (Locks: " + node.printLock() + ")" + " (Replicas: " + node.printReplicas() + ")");
 		}
 		else {
 			System.out.println("Directory: " + node.getName() + " (Locks: " + node.printLock() + ")");
@@ -1009,7 +1201,7 @@ public class TFSMaster implements Runnable {
 	 * @param name
 	 * @param id
 	 */
-	public void writeLogEntry(String command, String[] path, String name, long id) {
+	public void writeLogEntry(String command, String[] path, String name, long id, int replicas) {
 		FileWriter fstream;
 		try {
 			fstream = new FileWriter("log.txt",true);
@@ -1029,6 +1221,10 @@ public class TFSMaster implements Runnable {
 			}
 			if (id > 0) {
 				out.write(""+id);
+				out.newLine();
+			}
+			if (replicas > 0) {
+				out.write(replicas);
 				out.newLine();
 			}
 			out.close();
@@ -1056,7 +1252,8 @@ public class TFSMaster implements Runnable {
 					}
 					String name = in.readLine();
 					long id = Long.parseLong(in.readLine());
-					createFileWithID(path,name,false,id);
+					int replicas = Integer.parseInt(in.readLine());
+					createFileWithID(path,name,false,id,replicas);
 				}
 				else if (line.equals("createDirectory")) {
 					int length = Integer.parseInt(in.readLine());
@@ -1083,6 +1280,7 @@ public class TFSMaster implements Runnable {
 					}
 					deleteDirectory(path,false);
 				}
+				/*
 				else if (line.equals("recursiveDelete")) {
 					int length = Integer.parseInt(in.readLine());
 					String[] path = new String[length];
@@ -1100,6 +1298,7 @@ public class TFSMaster implements Runnable {
 					int num = Integer.parseInt(in.readLine());
 					recursiveCreateFileInitial(path,false,num);
 				}
+				*/
 				else {
 					System.out.println("Bad log file");
 				}

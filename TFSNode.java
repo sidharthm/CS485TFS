@@ -10,18 +10,26 @@ public class TFSNode {
 	String name;
 	long id;
 	List<NodeLock> locks;
+	List<String> replicas;
+	int desiredReplicas;
 
-	public TFSNode(boolean file, TFSNode p, long i, String n) {
+	public TFSNode(boolean file, TFSNode p, long i, String n, int d) {
 		parent = p;
 		isFile = file;
 		children = Collections.synchronizedList(new ArrayList<TFSNode>());
 		name = n;
 		id = i;
 		locks = Collections.synchronizedList(new ArrayList<NodeLock>());
+		replicas = Collections.synchronizedList(new ArrayList<String>());
+		desiredReplicas = d;
 	}
 	
 	public List<TFSNode> getChildren() {
 		return children;
+	}
+	
+	public List<String> getReplicas() {
+		return replicas;
 	}
 
 	public String getName() {
@@ -49,7 +57,7 @@ public class TFSNode {
 	}
 	
 	public String printLock() {
-		synchronized(this) {
+		synchronized(locks) {
 			String lockvalue = "";
 			if (locks.size() == 0) {
 				lockvalue = "NONE";
@@ -65,7 +73,7 @@ public class TFSNode {
 	}
 	
 	public boolean checkLocks(NodeLock l) {
-		synchronized(this) {
+		synchronized(locks) {
 			for (int i = 0; i < locks.size(); i++) {
 				if (!locks.get(i).checklock(l))
 					return false;
@@ -75,7 +83,7 @@ public class TFSNode {
 	}
 	
 	public void removeLock(NodeLock l) {
-		synchronized(this) {
+		synchronized(locks) {
 			for (int i = 0; i < locks.size(); i++) {
 				NodeLock lock = locks.get(i);
 				if (lock.getLock().getValue() == l.getLock().getValue()) {
@@ -84,6 +92,27 @@ public class TFSNode {
 				}
 			}
 		}
+	}
+	
+	public String printReplicas() {
+		synchronized(replicas) {
+			String replicaString = "";
+			if (replicas.size() == 0) {
+				replicaString = "NONE";
+			}
+			else {
+				for (int i = 0; i < replicas.size(); i++) {
+					replicaString += replicas.get(i).toString();
+					replicaString += " ";
+				}
+			}
+			return replicaString;
+		}
+	}
+	
+	public int getDesiredReplicas() {
+		int d = desiredReplicas;
+		return d;
 	}
 
 }

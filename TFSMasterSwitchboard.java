@@ -7,21 +7,29 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class TFSMasterSwitchboard implements Runnable{
 	
 	TFSMaster mPrime;
+	Object mPrimeLock;
 	TFSMaster m2;
+	Object m2Lock;
 	boolean initialized;
 	private String myName;//This contains the server's IP
 	private int portNumber = 4444;//This details the port to be used for trafficking of information
 	private Socket serverSocket; //this socket is used to communicate with the client
-	private TFSMessage outgoingMessage; //This message is used to convey information to other entities in the system
+	private List<TFSMessage> outgoingMessages; //This message is used to convey information to other entities in the system
 	private TFSMessage heartbeatMessage;//This message is used to ensure chunk servers are still operational
-	private ArrayList<TFSMessage> incomingMessages; // This Queue will store any incoming messages
+	private List<TFSMessage> incomingMessages; // This Queue will store any incoming messages
 	private TFSNode root;
+	private ArrayList<String> chunkServers;
+	Timer timer = new Timer();
 	
 	public TFSMasterSwitchboard() {
 		/*TEMPORARY: Master reads its own data from the config file so it has its own IP*/
@@ -36,22 +44,52 @@ public class TFSMasterSwitchboard implements Runnable{
 			System.err.println("Error: Configuration file not found");
 			System.exit(1);
 		}
-		outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
+		outgoingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
+		//outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
-		incomingMessages = new ArrayList<TFSMessage>();
+		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
 		System.out.println("My ip is " + myName);
-		root = new TFSNode(false,null,-1,"root");
-		mPrime = new TFSMaster(this);
-		m2 = new TFSMaster(this);
-		initialized = false;
+		root = new TFSNode(false,null,-1,"root",0);
+		mPrime = new TFSMaster(this,mPrimeLock);
+		m2 = new TFSMaster(this,m2Lock);
+		mPrime.initializeStructure();
+		timer.schedule(new TimerTask() {
+			
+	        public void run() {
+	            //TODO send heartbeat
+	        }
+	    }, 0, 60000);
 	}
 	
 	public TFSNode getRoot() {
 		return root;
 	}
 	
+	public List<TFSMessage> getOutgoingMessages() {
+		return outgoingMessages;
+	}
+	
+	public ArrayList<String> getChunkServers() {
+		return chunkServers;
+	}
+	
+	public void addOutgoingMessage(TFSMessage m) {
+		synchronized(outgoingMessages) {
+			outgoingMessages.add(m);
+		}
+	}
+	
 	public void run() {
+		while(true) {
+			scheduler();
+		}
+	}
+	
+	private void scheduler() {
 		try {
+			if (!outgoingMessages.isEmpty()) {
+				sendTraffic(outgoingMessages.remove(0));
+			}
 			incomingMessages = listenForTraffic(incomingMessages); //update incomingMessages as required
 			if (!incomingMessages.isEmpty()){ //If we have messages that need to be processed
 			 	parseMessage(incomingMessages.remove(0)); // identify what needs to be done based on the parameters of the first message, and respond
@@ -92,7 +130,7 @@ public class TFSMasterSwitchboard implements Runnable{
 		//change all parameters besides messageSource and sourceType to null types 
 		return m;
 	}
-	private ArrayList<TFSMessage> listenForTraffic(ArrayList<TFSMessage> q) throws ClassNotFoundException{
+	private List<TFSMessage> listenForTraffic(List<TFSMessage> q) throws ClassNotFoundException{
 		try (
 			ServerSocket serverSocket =
                 new ServerSocket(portNumber);
@@ -127,9 +165,8 @@ public class TFSMasterSwitchboard implements Runnable{
 	private void parseMessage(TFSMessage m){
 		//check the parameters of m, figure out the corresponding method to call for that
 		//those methods should finish by sending out the message and resetting the outgoingMessage 
-		outgoingMessage.setDestination(m.getSource());
 		TFSMessage.mType type = m.getMessageType();
-		if (type == TFSMessage.mType.HANDSHAKE || type == TFSMessage.mType.HEARTBEAT || type == TFSMessage.mType.HEARTBEATRESPONSE){
+		if (type == TFSMessage.mType.HANDSHAKE || type == TFSMessage.mType.HEARTBEATRESPONSE){
 			m2.addMessage(m);
 		}
 		else {

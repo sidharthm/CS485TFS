@@ -71,6 +71,15 @@ public class TFSMasterSwitchboard implements Runnable{
 		Thread thread3 = new Thread(m2);
 		thread2.start();
 		thread3.start();
+		timer2.schedule(new TimerTask() {
+	   		public void run() {
+	   		    for (int i = 0; i < chunkServers.size(); i++) {
+	    	    	if (responses.indexOf(chunkServers.get(i)) == -1) {
+	    	        	chunkServers.remove(i);
+	    	        }
+	    	    }
+	    	}
+	  	}, 0, 30000);
 		timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
 	        	for (int i = 0; i < chunkServers.size(); i++) {
@@ -79,18 +88,10 @@ public class TFSMasterSwitchboard implements Runnable{
 	        		System.out.println("Heartbeat sent");
 	        	}
 	        	responses.clear();
-	        	timer2.schedule(new TimerTask() {
-	    	        public void run() {
-	    	           for (int i = 0; i < chunkServers.size(); i++) {
-	    	        	   if (responses.indexOf(chunkServers.get(i)) == -1) {
-	    	        		   chunkServers.remove(i);
-	    	        	   }
-	    	           }
-	    	        }
-	    	    }, 0, 30000);
+	        	timer2.start();
 	        }
 	    }, 0, 60000);
-		
+		timer.start();
 	}
 	
 	public TFSNode getRoot() {

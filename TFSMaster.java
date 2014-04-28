@@ -381,7 +381,7 @@ public class TFSMaster implements Runnable {
 					synchronized(lock) {
 						try {
 							waitingIP = IP;
-							wait();
+							lock.wait();
 						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
@@ -727,7 +727,7 @@ public class TFSMaster implements Runnable {
 				synchronized(lock) {
 					try {
 						waitingIP = file.getReplicas().get(i);
-						wait();
+						lock.wait();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
@@ -1026,7 +1026,7 @@ public class TFSMaster implements Runnable {
 				synchronized(lock) {
 					try {
 						waitingIP = file.getReplicas().get(i);
-						wait();
+						lock.wait();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
@@ -1081,7 +1081,7 @@ public class TFSMaster implements Runnable {
 				synchronized(lock) {
 					try {
 						waitingIP = file.getReplicas().get(i);
-						wait();
+						lock.wait();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
@@ -1136,7 +1136,7 @@ public class TFSMaster implements Runnable {
 				synchronized(lock) {
 					try {
 						waitingIP = file.getReplicas().get(i);
-						wait();
+						lock.wait();
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}

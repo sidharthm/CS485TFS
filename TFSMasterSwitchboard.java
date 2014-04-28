@@ -49,7 +49,10 @@ public class TFSMasterSwitchboard implements Runnable{
 		outgoingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
 		//outgoingMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
 		heartbeatMessage = new TFSMessage(myName,TFSMessage.Type.MASTER);
+		heartbeatMessage.setMessageType(TFSMessage.mType.HEARTBEAT);
 		incomingMessages = Collections.synchronizedList(new ArrayList<TFSMessage>());
+		chunkServers = new ArrayList<String>();
+		responses = new ArrayList<String>();
 		System.out.println("My ip is " + myName);
 		root = new TFSNode(false,null,-1,"root",0);
 		mPrime = new TFSMaster(this,mPrimeLock);
@@ -58,6 +61,10 @@ public class TFSMasterSwitchboard implements Runnable{
 		timer.scheduleAtFixedRate(new TimerTask() {
 	        public void run() {
 	            //TODO send heartbeat
+	        	for (int i = 0; i < chunkServers.size(); i++) {
+	        		heartbeatMessage.setDestination(chunkServers.get(i));
+	        		sendTraffic(heartbeatMessage);
+	        	}
 	        	responses.clear();
 	        	timer2.schedule(new TimerTask() {
 	    	        public void run() {

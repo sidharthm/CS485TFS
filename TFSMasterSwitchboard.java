@@ -104,7 +104,7 @@ public class TFSMasterSwitchboard implements Runnable{
 	
 	public void addOutgoingMessage(TFSMessage m) {
 		synchronized(outgoingMessages) {
-			System.out.println("added here");
+			System.out.println("added here" + outgoingMessages.size());
 			outgoingMessages.add(m);
 		}
 	}

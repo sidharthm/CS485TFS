@@ -33,6 +33,7 @@ public class TFSMessage implements Serializable{
 		/*Basic constructor to set up attributes of the message for the sender*/
 		messageSource = senderName;
 		sourceType = senderType;
+		messageType = mType.NONE;
 	}
 /*Public methods for network behavior*/
 	/**
